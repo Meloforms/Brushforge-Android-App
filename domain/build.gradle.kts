@@ -9,6 +9,7 @@ kotlin {
 dependencies {
     api(project(":core:common"))
     api(libs.kotlinx.coroutines.core)
+    implementation(libs.javax.inject)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
