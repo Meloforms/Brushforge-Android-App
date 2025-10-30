@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "io.brushforge.brushforge.feature.palettes-release-51:/animator/fragment_open_enter.xml",
+        "source": "io.brushforge.brushforge.feature.palettes-fragment-1.5.1-34:/animator/fragment_open_enter.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.palettes-release-51:/animator/fragment_fade_enter.xml",
+        "source": "io.brushforge.brushforge.feature.palettes-fragment-1.5.1-34:/animator/fragment_fade_enter.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.palettes-release-51:/animator/fragment_close_exit.xml",
+        "source": "io.brushforge.brushforge.feature.palettes-fragment-1.5.1-34:/animator/fragment_close_exit.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.palettes-release-51:/animator/fragment_fade_exit.xml",
+        "source": "io.brushforge.brushforge.feature.palettes-fragment-1.5.1-34:/animator/fragment_fade_exit.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.palettes-release-51:/animator/fragment_open_exit.xml",
+        "source": "io.brushforge.brushforge.feature.palettes-fragment-1.5.1-34:/animator/fragment_open_exit.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.palettes-release-51:/animator/fragment_close_enter.xml",
+        "source": "io.brushforge.brushforge.feature.palettes-fragment-1.5.1-34:/animator/fragment_close_enter.xml"
+    }
+]

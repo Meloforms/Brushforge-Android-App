@@ -1,0 +1,18 @@
+[
+    {
+        "merged": "io.brushforge.brushforge.feature.mypaints-release-51:/drawable/notification_bg.xml",
+        "source": "io.brushforge.brushforge.feature.mypaints-core-1.13.1-45:/drawable/notification_bg.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.mypaints-release-51:/drawable/notification_bg_low.xml",
+        "source": "io.brushforge.brushforge.feature.mypaints-core-1.13.1-45:/drawable/notification_bg_low.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.mypaints-release-51:/drawable/notification_icon_background.xml",
+        "source": "io.brushforge.brushforge.feature.mypaints-core-1.13.1-45:/drawable/notification_icon_background.xml"
+    },
+    {
+        "merged": "io.brushforge.brushforge.feature.mypaints-release-51:/drawable/notification_tile_bg.xml",
+        "source": "io.brushforge.brushforge.feature.mypaints-core-1.13.1-45:/drawable/notification_tile_bg.xml"
+    }
+]

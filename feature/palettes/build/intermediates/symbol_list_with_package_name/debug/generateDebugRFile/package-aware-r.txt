@@ -1,0 +1,2 @@
+io.brushforge.brushforge.feature.palettes
+string palettes_title

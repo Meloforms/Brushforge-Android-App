@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="conditional_incidents">
+
+    <incident
+        id="NewApi"
+        severity="error"
+        message="">
+        <fix-data minSdk="26-∞" requiresApi="31-∞"/>
+        <location
+            file="${:core:ui*debug*MAIN*sourceProvider*0*javaDir*0}/io/brushforge/brushforge/core/ui/theme/BrushforgeTheme.kt"
+            line="24"
+            column="47"
+            startOffset="903"
+            endLine="24"
+            endColumn="69"
+            endOffset="925"/>
+        <map>
+            <entry
+                name="message"
+                string="Call requires API level 31 (current min is %1$s): `dynamicDarkColorScheme`"/>
+            <api-levels id="minSdk"
+                value="26-∞"/>
+            <api-levels id="requiresApi"
+                value="31-∞"/>
+        </map>
+    </incident>
+
+    <incident
+        id="NewApi"
+        severity="error"
+        message="">
+        <fix-data minSdk="26-∞" requiresApi="31-∞"/>
+        <location
+            file="${:core:ui*debug*MAIN*sourceProvider*0*javaDir*0}/io/brushforge/brushforge/core/ui/theme/BrushforgeTheme.kt"
+            line="25"
+            column="48"
+            startOffset="982"
+            endLine="25"
+            endColumn="71"
+            endOffset="1005"/>
+        <map>
+            <entry
+                name="message"
+                string="Call requires API level 31 (current min is %1$s): `dynamicLightColorScheme`"/>
+            <api-levels id="minSdk"
+                value="26-∞"/>
+            <api-levels id="requiresApi"
+                value="31-∞"/>
+        </map>
+    </incident>
+
+</incidents>

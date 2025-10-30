@@ -1,0 +1,34 @@
+{
+    "logs": [
+        {
+            "outputFile": "io.brushforge.brushforge.feature.converter-mergeReleaseResources-49:/values-v30/values-v30.xml",
+            "map": [
+                {
+                    "source": "/Users/basinert/.gradle/caches/8.13/transforms/f1c9f512997717e2df51bbe8a938d24e/transformed/material3-release/res/values-v30/values-v30.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "72",
+                        "endOffsets": "123"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "io.brushforge.brushforge.feature.converter-release-51:/values-v30/values-v30.xml",
+            "map": [
+                {
+                    "source": "/Users/basinert/.gradle/caches/8.13/transforms/f1c9f512997717e2df51bbe8a938d24e/transformed/material3-release/res/values-v30/values-v30.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "72",
+                        "endOffsets": "123"
+                    }
+                }
+            ]
+        }
+    ]
+}

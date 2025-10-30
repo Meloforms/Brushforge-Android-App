@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="partial_results">
+    <map id="UnusedResources">
+        <location id="R.string.my_paints_title"
+            file="${:feature:mypaints*debug*MAIN*sourceProvider*0*resDir*0}/values/strings.xml"
+            line="3"
+            column="13"
+            startOffset="63"
+            endLine="3"
+            endColumn="35"
+            endOffset="85"/>
+        <entry
+            name="model"
+            string="string[my_paints_title(D)];;;;"/>
+    </map>
+
+</incidents>

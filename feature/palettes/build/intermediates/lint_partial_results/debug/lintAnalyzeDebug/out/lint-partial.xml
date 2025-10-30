@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="partial_results">
+    <map id="UnusedResources">
+        <location id="R.string.palettes_title"
+            file="${:feature:palettes*debug*MAIN*sourceProvider*0*resDir*0}/values/strings.xml"
+            line="3"
+            column="13"
+            startOffset="63"
+            endLine="3"
+            endColumn="34"
+            endOffset="84"/>
+        <entry
+            name="model"
+            string="string[palettes_title(D)];;;;"/>
+    </map>
+
+</incidents>

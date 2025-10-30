@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.13.0" type="partial_results">
+    <map id="UnusedResources">
+        <location id="R.string.primed_title"
+            file="${:feature:primed*debug*MAIN*sourceProvider*0*resDir*0}/values/strings.xml"
+            line="3"
+            column="13"
+            startOffset="63"
+            endLine="3"
+            endColumn="32"
+            endOffset="82"/>
+        <entry
+            name="model"
+            string="string[primed_title(D)];;;;"/>
+    </map>
+
+</incidents>
