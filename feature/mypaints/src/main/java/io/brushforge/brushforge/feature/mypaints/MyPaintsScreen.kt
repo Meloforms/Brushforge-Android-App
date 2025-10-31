@@ -1,6 +1,8 @@
 package io.brushforge.brushforge.feature.mypaints
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +66,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.DropdownMenuItem
@@ -195,7 +198,6 @@ fun MyPaintsScreen(
                 state = state,
                 onToggleOwned = viewModel::onOwnedToggled,
                 onToggleWishlist = viewModel::onWishlistToggled,
-                onToggleAlmostEmpty = viewModel::onAlmostEmptyToggled,
                 onSearchQueryChange = viewModel::onSearchQueryChange,
                 onCollectionFilterSelected = viewModel::onCollectionFilterSelected,
                 onColorFamilyToggle = viewModel::onColorFamilyToggled,
@@ -217,7 +219,6 @@ private fun MyPaintsContent(
     state: MyPaintsUiState,
     onToggleOwned: (String, Boolean) -> Unit,
     onToggleWishlist: (String, Boolean) -> Unit,
-    onToggleAlmostEmpty: (String, Boolean) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onCollectionFilterSelected: (CollectionFilter) -> Unit,
     onColorFamilyToggle: (ColorFamily) -> Unit,
@@ -280,8 +281,7 @@ private fun MyPaintsContent(
                         item = item,
                         onClick = { onPaintSelected(item.stableId) },
                         onToggleOwned = onToggleOwned,
-                        onToggleWishlist = onToggleWishlist,
-                        onToggleAlmostEmpty = onToggleAlmostEmpty
+                        onToggleWishlist = onToggleWishlist
                     )
                 }
             }
@@ -301,8 +301,7 @@ private fun MyPaintsContent(
                         item = item,
                         onClick = { onPaintSelected(item.stableId) },
                         onToggleOwned = onToggleOwned,
-                        onToggleWishlist = onToggleWishlist,
-                        onToggleAlmostEmpty = onToggleAlmostEmpty
+                        onToggleWishlist = onToggleWishlist
                     )
                 }
             }
@@ -1274,8 +1273,7 @@ private fun PaintCard(
     item: PaintListItemUiModel,
     onClick: (PaintListItemUiModel) -> Unit,
     onToggleOwned: (String, Boolean) -> Unit,
-    onToggleWishlist: (String, Boolean) -> Unit,
-    onToggleAlmostEmpty: (String, Boolean) -> Unit
+    onToggleWishlist: (String, Boolean) -> Unit
 ) {
     Card(
         modifier = Modifier.clickable { onClick(item) }
@@ -1286,7 +1284,11 @@ private fun PaintCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ColorSwatch(hex = item.hex, modifier = Modifier.size(40.dp))
+            ColorSwatch(
+                hex = item.hex,
+                isAlmostEmpty = item.isAlmostEmpty,
+                modifier = Modifier.size(40.dp)
+            )
             Spacer(modifier = Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1346,32 +1348,73 @@ private fun PaintCard(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-                IconToggleButton(
-                    checked = item.isAlmostEmpty,
-                    onCheckedChange = { onToggleAlmostEmpty(item.stableId, it) },
-                    enabled = item.isOwned,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Inventory,
-                        contentDescription = "Almost empty",
-                        tint = if (item.isAlmostEmpty) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
         }
     }
 }
 
 @Composable
-private fun ColorSwatch(hex: String, modifier: Modifier = Modifier) {
+private fun ColorSwatch(
+    hex: String,
+    isAlmostEmpty: Boolean = false,
+    modifier: Modifier = Modifier
+) {
     val color = runCatching { Color(android.graphics.Color.parseColor(hex)) }
         .getOrElse { MaterialTheme.colorScheme.primary }
+
     Box(
         modifier = modifier
-            .background(color = color, shape = MaterialTheme.shapes.small)
-    )
+            .background(
+                color = if (isAlmostEmpty) MaterialTheme.colorScheme.surfaceVariant else color,
+                shape = MaterialTheme.shapes.small
+            )
+            .then(
+                if (isAlmostEmpty) {
+                    Modifier.border(
+                        width = 2.dp,
+                        color = color,
+                        shape = MaterialTheme.shapes.small
+                    )
+                } else Modifier
+            )
+    ) {
+        if (isAlmostEmpty) {
+            // Half-full indicator with subtle wave effect
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.small)
+            ) {
+                val width = size.width
+                val height = size.height
+                val waveHeight = height * 0.5f // Half full
+                val waveAmplitude = height * 0.015f // Much more subtle wave (1.5% of height)
+                val wavelength = width * 0.6f
+
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(0f, waveHeight)
+
+                    // Create very subtle wave at the top of the liquid
+                    var x = 0f
+                    while (x <= width) {
+                        val y = waveHeight + waveAmplitude * kotlin.math.sin((x / wavelength) * 2 * kotlin.math.PI).toFloat()
+                        lineTo(x, y)
+                        x += 2f
+                    }
+
+                    // Complete the path to fill the bottom half
+                    lineTo(width, height)
+                    lineTo(0f, height)
+                    close()
+                }
+
+                drawPath(
+                    path = path,
+                    color = color
+                )
+            }
+        }
+    }
 }
 
 private fun colorFamilyLabel(family: ColorFamily): String = when (family) {
