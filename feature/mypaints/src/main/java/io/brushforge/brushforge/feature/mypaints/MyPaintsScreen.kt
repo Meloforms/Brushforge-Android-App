@@ -249,6 +249,13 @@ private fun MyPaintsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        val (sectionTitle, sectionIcon) = when (state.selectedCollection) {
+            CollectionFilter.All -> "Catalog" to Icons.Filled.Collections
+            CollectionFilter.Owned -> "Owned Paints" to Icons.Filled.ColorLens
+            CollectionFilter.Wishlist -> "Wishlist" to Icons.Filled.Favorite
+        }
+        val listItems = state.visibleItems
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -265,38 +272,18 @@ private fun MyPaintsContent(
                 }
             }
 
-            if (state.userItems.isNotEmpty()) {
+            if (listItems.isNotEmpty()) {
                 item {
                     SectionHeaderWithActions(
-                        title = "Your Paints",
-                        icon = Icons.Filled.ColorLens,
+                        title = sectionTitle,
+                        icon = sectionIcon,
                         filterState = state.filterState,
                         sortOption = state.sortOption,
                         onOpenFilters = onOpenFilters,
                         onSortOptionSelected = onSortOptionSelected
                     )
                 }
-                items(state.userItems, key = { it.stableId }) { item ->
-                    PaintCard(
-                        item = item,
-                        onClick = { onPaintSelected(item.stableId) },
-                        onToggleOwned = onToggleOwned,
-                        onToggleWishlist = onToggleWishlist
-                    )
-                }
-            }
-            if (state.catalogItems.isNotEmpty()) {
-                item {
-                    SectionHeaderWithActions(
-                        title = "Catalog",
-                        icon = Icons.Filled.Collections,
-                        filterState = state.filterState,
-                        sortOption = state.sortOption,
-                        onOpenFilters = onOpenFilters,
-                        onSortOptionSelected = onSortOptionSelected
-                    )
-                }
-                items(state.catalogItems, key = { it.stableId }) { item ->
+                items(listItems, key = { it.stableId }) { item ->
                     PaintCard(
                         item = item,
                         onClick = { onPaintSelected(item.stableId) },
@@ -1287,6 +1274,7 @@ private fun PaintCard(
             ColorSwatch(
                 hex = item.hex,
                 isAlmostEmpty = item.isAlmostEmpty,
+                finish = item.paintFinish,
                 modifier = Modifier.size(40.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
@@ -1298,7 +1286,7 @@ private fun PaintCard(
                 Text(
                     text = item.brand,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF64B5F6) // Light blue for better visibility
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1357,6 +1345,7 @@ private fun PaintCard(
 private fun ColorSwatch(
     hex: String,
     isAlmostEmpty: Boolean = false,
+    finish: io.brushforge.brushforge.domain.model.PaintFinish? = null,
     modifier: Modifier = Modifier
 ) {
     val color = runCatching { Color(android.graphics.Color.parseColor(hex)) }
@@ -1378,8 +1367,8 @@ private fun ColorSwatch(
                 } else Modifier
             )
     ) {
+        // Half-full indicator for almost empty paints
         if (isAlmostEmpty) {
-            // Half-full indicator with subtle wave effect
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1387,22 +1376,18 @@ private fun ColorSwatch(
             ) {
                 val width = size.width
                 val height = size.height
-                val waveHeight = height * 0.5f // Half full
-                val waveAmplitude = height * 0.015f // Much more subtle wave (1.5% of height)
+                val waveHeight = height * 0.5f
+                val waveAmplitude = height * 0.015f
                 val wavelength = width * 0.6f
 
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, waveHeight)
-
-                    // Create very subtle wave at the top of the liquid
                     var x = 0f
                     while (x <= width) {
                         val y = waveHeight + waveAmplitude * kotlin.math.sin((x / wavelength) * 2 * kotlin.math.PI).toFloat()
                         lineTo(x, y)
                         x += 2f
                     }
-
-                    // Complete the path to fill the bottom half
                     lineTo(width, height)
                     lineTo(0f, height)
                     close()
@@ -1412,6 +1397,79 @@ private fun ColorSwatch(
                     path = path,
                     color = color
                 )
+            }
+        }
+
+        // Finish overlay effects
+        if (!isAlmostEmpty && finish != null) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(MaterialTheme.shapes.small)
+            ) {
+                when (finish) {
+                    io.brushforge.brushforge.domain.model.PaintFinish.Metallic -> {
+                        // Metallic shine effect - diagonal gradient
+                        val gradient = androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.0f),
+                                Color.White.copy(alpha = 0.4f),
+                                Color.White.copy(alpha = 0.6f),
+                                Color.White.copy(alpha = 0.4f),
+                                Color.White.copy(alpha = 0.0f)
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height)
+                        )
+                        drawRect(brush = gradient)
+                    }
+                    io.brushforge.brushforge.domain.model.PaintFinish.Gloss -> {
+                        // Glossy reflection effect - top highlight
+                        val gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.0f)
+                            ),
+                            startY = 0f,
+                            endY = size.height * 0.5f
+                        )
+                        drawRect(brush = gradient)
+                    }
+                    io.brushforge.brushforge.domain.model.PaintFinish.Satin -> {
+                        // Satin subtle sheen - very light reflection
+                        val gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.0f)
+                            ),
+                            startY = 0f,
+                            endY = size.height * 0.4f
+                        )
+                        drawRect(brush = gradient)
+                    }
+                    io.brushforge.brushforge.domain.model.PaintFinish.Transparent -> {
+                        // Checkerboard pattern for transparent
+                        val squareSize = size.width / 6
+                        for (row in 0..5) {
+                            for (col in 0..5) {
+                                if ((row + col) % 2 == 0) {
+                                    drawRect(
+                                        color = Color.White.copy(alpha = 0.2f),
+                                        topLeft = androidx.compose.ui.geometry.Offset(
+                                            x = col * squareSize,
+                                            y = row * squareSize
+                                        ),
+                                        size = androidx.compose.ui.geometry.Size(squareSize, squareSize)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    io.brushforge.brushforge.domain.model.PaintFinish.Matte,
+                    io.brushforge.brushforge.domain.model.PaintFinish.Unknown -> {
+                        // No overlay for matte or unknown
+                    }
+                }
             }
         }
     }
