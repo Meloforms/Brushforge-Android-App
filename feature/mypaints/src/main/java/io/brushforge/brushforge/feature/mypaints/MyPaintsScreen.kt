@@ -246,29 +246,33 @@ private fun MyPaintsContent(
             onClearAllFilters = onClearAllFilters
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Compact inline inventory indicator
-        CompactInventorySummary(
-            inventoryCount = state.inventoryCount,
-            inventoryLimit = state.inventoryLimit,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Limit reached warning banner (only show when at/near limit)
+            if (state.inventoryCount >= state.inventoryLimit) {
+                item {
+                    LimitReachedBanner(
+                        currentCount = state.inventoryCount,
+                        limit = state.inventoryLimit,
+                        onDismiss = { /* TODO: Add dismiss logic if needed */ }
+                    )
+                }
+            }
+
             if (state.userItems.isNotEmpty()) {
                 item {
-                    CompactSectionHeader(
+                    SectionHeaderWithActions(
                         title = "Your Paints",
-                        icon = Icons.Filled.ColorLens
+                        icon = Icons.Filled.ColorLens,
+                        filterState = state.filterState,
+                        sortOption = state.sortOption,
+                        onOpenFilters = onOpenFilters,
+                        onSortOptionSelected = onSortOptionSelected
                     )
                 }
                 items(state.userItems, key = { it.stableId }) { item ->
@@ -283,9 +287,13 @@ private fun MyPaintsContent(
             }
             if (state.catalogItems.isNotEmpty()) {
                 item {
-                    CompactSectionHeader(
+                    SectionHeaderWithActions(
                         title = "Catalog",
-                        icon = Icons.Filled.Collections
+                        icon = Icons.Filled.Collections,
+                        filterState = state.filterState,
+                        sortOption = state.sortOption,
+                        onOpenFilters = onOpenFilters,
+                        onSortOptionSelected = onSortOptionSelected
                     )
                 }
                 items(state.catalogItems, key = { it.stableId }) { item ->
@@ -351,8 +359,8 @@ private fun SearchAndFilterSection(
                         Text(
                             text = when (filter) {
                                 CollectionFilter.All -> "All"
-                                CollectionFilter.Owned -> "Owned"
-                                CollectionFilter.Wishlist -> "Wishlist"
+                                CollectionFilter.Owned -> "Owned (${state.ownedCount})"
+                                CollectionFilter.Wishlist -> "Wishlist (${state.wishlistCount})"
                             },
                             style = MaterialTheme.typography.labelMedium
                         )
@@ -360,16 +368,6 @@ private fun SearchAndFilterSection(
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Compact filter/sort row
-        CompactFilterSortRow(
-            filterState = state.filterState,
-            sortOption = state.sortOption,
-            onOpenFilters = onOpenFilters,
-            onSortOptionSelected = onSortOptionSelected
-        )
 
         // Active filters - only show if active
         if (state.filterState.activeCount > 0) {
@@ -1089,6 +1087,141 @@ private fun InventorySummary(
                     text = "$inventoryCount of $inventoryLimit paints tracked",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeaderWithActions(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    filterState: PaintFilterState,
+    sortOption: PaintSortOption,
+    onOpenFilters: () -> Unit,
+    onSortOptionSelected: (PaintSortOption) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var sortExpanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Section title with icon
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(text = title, style = MaterialTheme.typography.titleMedium)
+        }
+
+        // Filter and Sort action icons
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // Filter icon button
+            IconToggleButton(
+                checked = filterState.activeCount > 0,
+                onCheckedChange = { onOpenFilters() },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Tune,
+                    contentDescription = "Filters",
+                    modifier = Modifier.size(20.dp),
+                    tint = if (filterState.activeCount > 0) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            // Sort icon button with dropdown
+            Box {
+                IconToggleButton(
+                    checked = false,
+                    onCheckedChange = { sortExpanded = true },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Sort,
+                        contentDescription = "Sort",
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                DropdownMenu(
+                    expanded = sortExpanded,
+                    onDismissRequest = { sortExpanded = false }
+                ) {
+                    PaintSortOption.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.label) },
+                            onClick = {
+                                onSortOptionSelected(option)
+                                sortExpanded = false
+                            },
+                            trailingIcon = if (sortOption == option) {
+                                { Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LimitReachedBanner(
+    currentCount: Int,
+    limit: Int,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Inventory,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Inventory limit reached",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Text(
+                    text = "You've reached your $limit paint limit. Upgrade to Premium for unlimited paints or remove some to add more.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
                 )
             }
         }
