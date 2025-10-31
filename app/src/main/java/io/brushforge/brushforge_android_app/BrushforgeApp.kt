@@ -19,10 +19,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
+import android.net.Uri
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import io.brushforge.brushforge.feature.converter.R as ConverterR
 import io.brushforge.brushforge.feature.mypaints.R as MyPaintsR
 import io.brushforge.brushforge.feature.palettes.R as PalettesR
@@ -30,6 +33,7 @@ import io.brushforge.brushforge.feature.primed.R as PrimedR
 import io.brushforge.brushforge.feature.profile.R as ProfileR
 import io.brushforge.brushforge.feature.converter.ConverterScreen
 import io.brushforge.brushforge.feature.mypaints.MyPaintsScreen
+import io.brushforge.brushforge.feature.mypaints.PaintDetailScreen
 import io.brushforge.brushforge.feature.palettes.PalettesScreen
 import io.brushforge.brushforge.feature.primed.PrimedScreen
 import io.brushforge.brushforge.feature.profile.ProfileScreen
@@ -42,23 +46,27 @@ fun BrushforgeApp(
     val destinations = BrushforgeDestination.all
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val bottomBarRoutes = destinations.map { it.route }
+    val shouldShowBottomBar = currentDestination?.route in bottomBarRoutes
 
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            BrushforgeBottomBar(
-                destinations = destinations,
-                currentDestination = currentDestination,
-                onDestinationSelected = { destination ->
-                    navController.navigate(destination.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
+            if (shouldShowBottomBar) {
+                BrushforgeBottomBar(
+                    destinations = destinations,
+                    currentDestination = currentDestination,
+                    onDestinationSelected = { destination ->
+                        navController.navigate(destination.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -70,7 +78,26 @@ fun BrushforgeApp(
                 ConverterScreen()
             }
             composable(BrushforgeDestination.MyPaints.route) {
-                MyPaintsScreen()
+                MyPaintsScreen(
+                    onPaintSelected = { stableId ->
+                        val encoded = Uri.encode(stableId)
+                        navController.navigate("mypaints/detail/$encoded")
+                    }
+                )
+            }
+            composable(
+                route = "mypaints/detail/{stableId}",
+                arguments = listOf(navArgument("stableId") { type = NavType.StringType })
+            ) {
+                PaintDetailScreen(
+                    onNavigateUp = { navController.popBackStack() },
+                    onShowPaint = { nextStableId ->
+                        val encoded = Uri.encode(nextStableId)
+                        navController.navigate("mypaints/detail/$encoded") {
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
             composable(BrushforgeDestination.Palettes.route) {
                 PalettesScreen()
