@@ -231,9 +231,7 @@ private fun MyPaintsContent(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(bottom = 16.dp)
+        modifier = modifier.fillMaxSize()
     ) {
         SearchAndFilterSection(
             state = state,
@@ -247,20 +245,32 @@ private fun MyPaintsContent(
             onTypeFilterToggle = onTypeFilterToggle,
             onClearAllFilters = onClearAllFilters
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        InventorySummary(
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Compact inline inventory indicator
+        CompactInventorySummary(
             inventoryCount = state.inventoryCount,
             inventoryLimit = state.inventoryLimit,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
         )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (state.userItems.isNotEmpty()) {
-                item { SectionHeader(title = "Your Paints", icon = Icons.Filled.ColorLens) }
+                item {
+                    CompactSectionHeader(
+                        title = "Your Paints",
+                        icon = Icons.Filled.ColorLens
+                    )
+                }
                 items(state.userItems, key = { it.stableId }) { item ->
                     PaintCard(
                         item = item,
@@ -272,7 +282,12 @@ private fun MyPaintsContent(
                 }
             }
             if (state.catalogItems.isNotEmpty()) {
-                item { SectionHeader(title = "Catalog", icon = Icons.Filled.Collections) }
+                item {
+                    CompactSectionHeader(
+                        title = "Catalog",
+                        icon = Icons.Filled.Collections
+                    )
+                }
                 items(state.catalogItems, key = { it.stableId }) { item ->
                     PaintCard(
                         item = item,
@@ -305,40 +320,58 @@ private fun SearchAndFilterSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
+        // Compact search bar with reduced padding
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Search paints") }
+            label = { Text("Search paints") },
+            shape = MaterialTheme.shapes.medium
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        SingleChoiceSegmentedButtonRow {
-            val filters = CollectionFilter.values()
-            filters.forEachIndexed { index, filter ->
-                val selected = state.selectedCollection == filter
-                SegmentedButton(
-                    selected = selected,
-                    onClick = { onCollectionFilterSelected(filter) },
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = filters.size)
-                ) {
-                    Text(
-                        text = when (filter) {
-                            CollectionFilter.All -> "All"
-                            CollectionFilter.Owned -> "Owned"
-                            CollectionFilter.Wishlist -> "Wishlist"
-                        }
-                    )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Inline collection tabs and filter/sort buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Collection filter chips (more compact than segmented buttons)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                val filters = CollectionFilter.values()
+                filters.forEachIndexed { index, filter ->
+                    val selected = state.selectedCollection == filter
+                    SegmentedButton(
+                        selected = selected,
+                        onClick = { onCollectionFilterSelected(filter) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = filters.size)
+                    ) {
+                        Text(
+                            text = when (filter) {
+                                CollectionFilter.All -> "All"
+                                CollectionFilter.Owned -> "Owned"
+                                CollectionFilter.Wishlist -> "Wishlist"
+                            },
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        FilterSortRow(
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Compact filter/sort row
+        CompactFilterSortRow(
             filterState = state.filterState,
             sortOption = state.sortOption,
             onOpenFilters = onOpenFilters,
             onSortOptionSelected = onSortOptionSelected
         )
+
+        // Active filters - only show if active
         if (state.filterState.activeCount > 0) {
             Spacer(modifier = Modifier.height(8.dp))
             ActiveFilterChips(
@@ -347,31 +380,115 @@ private fun SearchAndFilterSection(
                 onTypeChipClick = onTypeFilterToggle,
                 onClearAll = onClearAllFilters
             )
-            Spacer(modifier = Modifier.height(12.dp))
         }
+
+        // Color filters - only show if any are selected (collapsible)
+        if (state.selectedColorFamilies.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            ColorFilterRow(
+                availableFamilies = state.availableColorFamilies,
+                selectedFamilies = state.selectedColorFamilies,
+                onColorFamilyToggle = onColorFamilyToggle,
+                onClearColorFilters = onClearColorFilters
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactFilterSortRow(
+    filterState: PaintFilterState,
+    sortOption: PaintSortOption,
+    onOpenFilters: () -> Unit,
+    onSortOptionSelected: (PaintSortOption) -> Unit
+) {
+    var sortExpanded by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilledTonalButton(
+            onClick = onOpenFilters,
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Tune,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            val label = if (filterState.activeCount > 0) {
+                "Filters (${filterState.activeCount})"
+            } else {
+                "Filters"
+            }
+            Text(text = label, style = MaterialTheme.typography.labelLarge)
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            FilledTonalButton(
+                onClick = { sortExpanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Sort,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = sortOption.label, style = MaterialTheme.typography.labelLarge)
+            }
+            DropdownMenu(
+                expanded = sortExpanded,
+                onDismissRequest = { sortExpanded = false }
+            ) {
+                PaintSortOption.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.label) },
+                        onClick = {
+                            onSortOptionSelected(option)
+                            sortExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ColorFilterRow(
+    availableFamilies: List<ColorFamily>,
+    selectedFamilies: Set<ColorFamily>,
+    onColorFamilyToggle: (ColorFamily) -> Unit,
+    onClearColorFilters: () -> Unit
+) {
+    Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Colors", style = MaterialTheme.typography.titleSmall)
-            if (state.selectedColorFamilies.isNotEmpty()) {
-                TextButton(onClick = onClearColorFilters) {
-                    Text("Clear")
-                }
+            Text(text = "Colors", style = MaterialTheme.typography.labelMedium)
+            TextButton(
+                onClick = onClearColorFilters,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text("Clear", style = MaterialTheme.typography.labelSmall)
             }
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(state.availableColorFamilies) { family ->
-                val selected = state.selectedColorFamilies.contains(family)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(availableFamilies) { family ->
+                val selected = selectedFamilies.contains(family)
                 FilterChip(
                     selected = selected,
                     onClick = { onColorFamilyToggle(family) },
-                    label = { Text(colorFamilyLabel(family)) },
+                    label = { Text(colorFamilyLabel(family), style = MaterialTheme.typography.labelSmall) },
                     leadingIcon = {
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(10.dp)
                                 .background(color = colorFamilyColor(family), shape = MaterialTheme.shapes.small)
                         )
                     }
@@ -910,6 +1027,39 @@ private fun <T> TypeDropdown(
 }
 
 @Composable
+private fun CompactInventorySummary(
+    inventoryCount: Int,
+    inventoryLimit: Int,
+    modifier: Modifier = Modifier
+) {
+    val progress = (inventoryCount.toFloat() / inventoryLimit.toFloat()).coerceIn(0f, 1f)
+    val isNearLimit = inventoryCount >= (inventoryLimit * 0.8)
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Inventory,
+                contentDescription = null,
+                tint = if (isNearLimit) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = "$inventoryCount / $inventoryLimit",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isNearLimit) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 private fun InventorySummary(
     inventoryCount: Int,
     inventoryLimit: Int,
@@ -946,6 +1096,29 @@ private fun InventorySummary(
 }
 
 @Composable
+private fun CompactSectionHeader(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text = title, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
 private fun SectionHeader(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -977,69 +1150,80 @@ private fun PaintCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ColorSwatch(hex = item.hex)
-            Spacer(modifier = Modifier.width(12.dp))
+            ColorSwatch(hex = item.hex, modifier = Modifier.size(40.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.displayName,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     text = item.brand,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(
-                    text = "${item.typeLabel} • ${item.finishLabel}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (item.isUserPaint) {
-                    val flag = when {
-                        item.isCustom -> "Custom"
-                        item.isMixed -> "Mixed"
-                        else -> "User"
-                    }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = flag,
+                        text = "${item.typeLabel} • ${item.finishLabel}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (item.isUserPaint) {
+                        val flag = when {
+                            item.isCustom -> "Custom"
+                            item.isMixed -> "Mixed"
+                            else -> "User"
+                        }
+                        Text(
+                            text = " • $flag",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
                 }
             }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconToggleButton(
                     checked = item.isOwned,
-                    onCheckedChange = { onToggleOwned(item.stableId, it) }
+                    onCheckedChange = { onToggleOwned(item.stableId, it) },
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (item.isOwned) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
-                        contentDescription = "Owned"
+                        contentDescription = "Owned",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 IconToggleButton(
                     checked = item.isWishlist,
-                    onCheckedChange = { onToggleWishlist(item.stableId, it) }
+                    onCheckedChange = { onToggleWishlist(item.stableId, it) },
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (item.isWishlist) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Wishlist"
+                        contentDescription = "Wishlist",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 IconToggleButton(
                     checked = item.isAlmostEmpty,
                     onCheckedChange = { onToggleAlmostEmpty(item.stableId, it) },
-                    enabled = item.isOwned
+                    enabled = item.isOwned,
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Inventory,
                         contentDescription = "Almost empty",
-                        tint = if (item.isAlmostEmpty) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (item.isAlmostEmpty) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -1053,7 +1237,6 @@ private fun ColorSwatch(hex: String, modifier: Modifier = Modifier) {
         .getOrElse { MaterialTheme.colorScheme.primary }
     Box(
         modifier = modifier
-            .size(48.dp)
             .background(color = color, shape = MaterialTheme.shapes.small)
     )
 }
