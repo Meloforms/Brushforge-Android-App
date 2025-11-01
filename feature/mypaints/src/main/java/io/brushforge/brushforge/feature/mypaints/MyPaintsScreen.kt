@@ -1283,8 +1283,15 @@ private fun PaintCard(
                     text = item.displayName,
                     style = MaterialTheme.typography.titleSmall
                 )
+                // Show brand and line together, avoiding duplicates
+                val brandDisplay = buildBrandLineDisplay(
+                    brand = item.brand,
+                    line = item.line,
+                    type = item.typeLabel,
+                    finish = item.finishLabel
+                )
                 Text(
-                    text = item.brand,
+                    text = brandDisplay,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF64B5F6) // Light blue for better visibility
                 )
@@ -1501,4 +1508,55 @@ private fun colorFamilyColor(family: ColorFamily): Color = when (family) {
     ColorFamily.Grey -> Color(0xFFB0BEC5)
     ColorFamily.Black -> Color(0xFF424242)
     ColorFamily.White -> Color(0xFFFFFFFF)
+}
+
+/**
+ * Intelligently combines brand and line, removing duplicates.
+ * Also removes type/finish from line since they're shown separately below.
+ */
+private fun buildBrandLineDisplay(
+    brand: String,
+    line: String?,
+    type: String,
+    finish: String
+): String {
+    if (line == null) return brand
+
+    // Remove type and finish from the line since they're shown separately
+    var cleanedLine = line
+
+    // Remove type if it appears in the line
+    if (type.isNotBlank() && type != "Unknown") {
+        cleanedLine = cleanedLine.replace(type, "", ignoreCase = true).trim()
+    }
+
+    // Remove finish if it appears in the line
+    if (finish.isNotBlank() && finish != "Unknown") {
+        cleanedLine = cleanedLine.replace(finish, "", ignoreCase = true).trim()
+    }
+
+    // Clean up any leftover spacing/punctuation
+    cleanedLine = cleanedLine.trim().replace(Regex("\\s+"), " ")
+
+    // If line is now empty after cleanup, just return brand
+    if (cleanedLine.isBlank()) return brand
+
+    // Check if line already starts with the brand name
+    if (cleanedLine.startsWith(brand, ignoreCase = true)) {
+        return cleanedLine
+    }
+
+    // Check if significant words from brand appear in the line
+    val brandWords = brand.split(" ").filter { it.length > 2 } // Words longer than 2 chars
+    val hasSignificantOverlap = brandWords.any { word ->
+        cleanedLine.contains(word, ignoreCase = true)
+    }
+
+    // If there's significant overlap, prefer the longer string
+    if (hasSignificantOverlap) {
+        return if (cleanedLine.length > brand.length) cleanedLine else "$brand $cleanedLine"
+    }
+
+    // Otherwise, combine them
+    return "$brand $cleanedLine"
 }
