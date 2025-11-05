@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +74,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -165,6 +170,18 @@ fun MyPaintsScreen(
                     onClearAll = viewModel::onClearAllFilters,
                     onClose = viewModel::onDismissSheet
                 )
+                BottomSheetContent.PaintActions -> {
+                    state.selectedPaintForActions?.let { paint ->
+                        PaintActionsSheet(
+                            paint = paint,
+                            onToggleOwned = viewModel::onOwnedToggled,
+                            onToggleWishlist = viewModel::onWishlistToggled,
+                            onToggleAlmostEmpty = viewModel::onAlmostEmptyToggled,
+                            onDelete = viewModel::onDeleteUserPaint,
+                            onDismiss = viewModel::onDismissSheet
+                        )
+                    }
+                }
                 null -> Unit
             }
         }
@@ -203,6 +220,7 @@ fun MyPaintsScreen(
                 onColorFamilyToggle = viewModel::onColorFamilyToggled,
                 onClearColorFilters = viewModel::onClearColorFilters,
                 onPaintSelected = onPaintSelected,
+                onPaintLongPressed = viewModel::onPaintLongPressed,
                 onOpenFilters = viewModel::onFiltersClicked,
                 onSortOptionSelected = viewModel::onSortOptionSelected,
                 onBrandFilterToggle = viewModel::onBrandFilterToggled,
@@ -224,6 +242,7 @@ private fun MyPaintsContent(
     onColorFamilyToggle: (ColorFamily) -> Unit,
     onClearColorFilters: () -> Unit,
     onPaintSelected: (String) -> Unit,
+    onPaintLongPressed: (String) -> Unit,
     onOpenFilters: () -> Unit,
     onSortOptionSelected: (PaintSortOption) -> Unit,
     onBrandFilterToggle: (String) -> Unit,
@@ -249,11 +268,6 @@ private fun MyPaintsContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val (sectionTitle, sectionIcon) = when (state.selectedCollection) {
-            CollectionFilter.All -> "Catalog" to Icons.Filled.Collections
-            CollectionFilter.Owned -> "Owned Paints" to Icons.Filled.ColorLens
-            CollectionFilter.Wishlist -> "Wishlist" to Icons.Filled.Favorite
-        }
         val listItems = state.visibleItems
 
         LazyColumn(
@@ -273,22 +287,13 @@ private fun MyPaintsContent(
             }
 
             if (listItems.isNotEmpty()) {
-                item {
-                    SectionHeaderWithActions(
-                        title = sectionTitle,
-                        icon = sectionIcon,
-                        filterState = state.filterState,
-                        sortOption = state.sortOption,
-                        onOpenFilters = onOpenFilters,
-                        onSortOptionSelected = onSortOptionSelected
-                    )
-                }
                 items(listItems, key = { it.stableId }) { item ->
                     PaintCard(
                         item = item,
                         onClick = { onPaintSelected(item.stableId) },
                         onToggleOwned = onToggleOwned,
-                        onToggleWishlist = onToggleWishlist
+                        onToggleWishlist = onToggleWishlist,
+                        onLongPress = onPaintLongPressed
                     )
                 }
             }
@@ -314,46 +319,62 @@ private fun SearchAndFilterSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        // Compact search bar with reduced padding
+        // Search bar with filter button and clear button
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text("Search paints") },
-            shape = MaterialTheme.shapes.medium
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Inline collection tabs and filter/sort buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Collection filter chips (more compact than segmented buttons)
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
-                val filters = CollectionFilter.values()
-                filters.forEachIndexed { index, filter ->
-                    val selected = state.selectedCollection == filter
-                    SegmentedButton(
-                        selected = selected,
-                        onClick = { onCollectionFilterSelected(filter) },
-                        shape = SegmentedButtonDefaults.itemShape(index = index, count = filters.size)
-                    ) {
-                        Text(
-                            text = when (filter) {
-                                CollectionFilter.All -> "All"
-                                CollectionFilter.Owned -> "Owned (${state.ownedCount})"
-                                CollectionFilter.Wishlist -> "Wishlist (${state.wishlistCount})"
-                            },
-                            style = MaterialTheme.typography.labelMedium
+            shape = MaterialTheme.shapes.medium,
+            leadingIcon = {
+                Box(
+                    modifier = Modifier.clickable { onOpenFilters() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (state.filterState.activeCount > 0) {
+                        androidx.compose.material3.BadgedBox(
+                            badge = {
+                                androidx.compose.material3.Badge {
+                                    Text(
+                                        text = state.filterState.activeCount.toString(),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Tune,
+                                contentDescription = "Filter & Sort"
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Tune,
+                            contentDescription = "Filter & Sort"
                         )
                     }
                 }
+            },
+            trailingIcon = {
+                if (state.searchQuery.isNotEmpty()) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Clear search",
+                        modifier = Modifier.clickable { onSearchQueryChange("") }
+                    )
+                }
             }
-        }
+        )
+
+        // Color filters - always visible like iOS
+        Spacer(modifier = Modifier.height(12.dp))
+        ColorFilterRow(
+            availableFamilies = state.availableColorFamilies,
+            selectedFamilies = state.selectedColorFamilies,
+            onColorFamilyToggle = onColorFamilyToggle,
+            onClearColorFilters = onClearColorFilters
+        )
 
         // Active filters - only show if active
         if (state.filterState.activeCount > 0) {
@@ -363,17 +384,6 @@ private fun SearchAndFilterSection(
                 onBrandChipClick = onBrandFilterToggle,
                 onTypeChipClick = onTypeFilterToggle,
                 onClearAll = onClearAllFilters
-            )
-        }
-
-        // Color filters - only show if any are selected (collapsible)
-        if (state.selectedColorFamilies.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            ColorFilterRow(
-                availableFamilies = state.availableColorFamilies,
-                selectedFamilies = state.selectedColorFamilies,
-                onColorFamilyToggle = onColorFamilyToggle,
-                onClearColorFilters = onClearColorFilters
             )
         }
     }
@@ -386,36 +396,27 @@ private fun ColorFilterRow(
     onColorFamilyToggle: (ColorFamily) -> Unit,
     onClearColorFilters: () -> Unit
 ) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = "Colors", style = MaterialTheme.typography.labelMedium)
-            TextButton(
-                onClick = onClearColorFilters,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text("Clear", style = MaterialTheme.typography.labelSmall)
-            }
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(availableFamilies) { family ->
-                val selected = selectedFamilies.contains(family)
-                FilterChip(
-                    selected = selected,
-                    onClick = { onColorFamilyToggle(family) },
-                    label = { Text(colorFamilyLabel(family), style = MaterialTheme.typography.labelSmall) },
-                    leadingIcon = {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .background(color = colorFamilyColor(family), shape = MaterialTheme.shapes.small)
-                        )
-                    }
-                )
-            }
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        items(availableFamilies) { family ->
+            val selected = selectedFamilies.contains(family)
+            FilterChip(
+                selected = selected,
+                onClick = { onColorFamilyToggle(family) },
+                label = { Text(colorFamilyLabel(family), style = MaterialTheme.typography.labelSmall) },
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(
+                                color = colorFamilyColor(family),
+                                shape = CircleShape
+                            )
+                    )
+                }
+            )
         }
     }
 }
@@ -591,19 +592,107 @@ private fun AddPaintMenu(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(vertical = 16.dp)
     ) {
-        Text(text = "Add Paint", style = MaterialTheme.typography.titleMedium)
-        Button(onClick = onAddCustom, modifier = Modifier.fillMaxWidth()) {
-            Text("Add Custom Paint")
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Add to My Paints",
+                style = MaterialTheme.typography.titleLarge
+            )
+            androidx.compose.material3.IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Close"
+                )
+            }
         }
-        Button(onClick = onMixPaints, modifier = Modifier.fillMaxWidth()) {
-            Text("Mix Paints")
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Custom Paint option
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onAddCustom() }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Custom Paint",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Build a paint with your own color, brand, and notes.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-        TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-            Text("Cancel")
+
+        // Mixed Paint option
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onMixPaints() }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Tune,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Mixed Paint",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Blend paints you own and reuse the mix in recipes.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
@@ -1049,15 +1138,20 @@ private fun SectionHeader(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun PaintCard(
     item: PaintListItemUiModel,
     onClick: (PaintListItemUiModel) -> Unit,
     onToggleOwned: (String, Boolean) -> Unit,
-    onToggleWishlist: (String, Boolean) -> Unit
+    onToggleWishlist: (String, Boolean) -> Unit,
+    onLongPress: (String) -> Unit
 ) {
     Card(
-        modifier = Modifier.clickable { onClick(item) }
+        modifier = Modifier.combinedClickable(
+            onClick = { onClick(item) },
+            onLongClick = { onLongPress(item.stableId) }
+        )
     ) {
         Row(
             modifier = Modifier
@@ -1077,15 +1171,20 @@ private fun PaintCard(
                     text = item.displayName,
                     style = MaterialTheme.typography.titleSmall
                 )
-                // Display brand and line (clean data, no workarounds needed!)
-                val brandLine = when {
-                    item.line != null -> "${item.brand} ${item.line}"
-                    else -> item.brand
-                }
+                // Display brand and line with different colors
                 Text(
-                    text = brandLine,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64B5F6) // Light blue for better visibility
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = Color(0xFF64B5F6))) {
+                            append(item.brand)
+                        }
+                        if (item.line != null) {
+                            append(" ")
+                            withStyle(style = SpanStyle(color = Color(0xFF90CAF9))) {
+                                append(item.line)
+                            }
+                        }
+                    },
+                    style = MaterialTheme.typography.bodySmall
                 )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1096,12 +1195,9 @@ private fun PaintCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (item.isUserPaint) {
-                        val flag = when {
-                            item.isCustom -> "Custom"
-                            item.isMixed -> "Mixed"
-                            else -> "User"
-                        }
+                    // Only show flag for custom or mixed paints
+                    if (item.isCustom || item.isMixed) {
+                        val flag = if (item.isCustom) "Custom" else "Mixed"
                         Text(
                             text = " • $flag",
                             style = MaterialTheme.typography.labelSmall,
@@ -1267,6 +1363,195 @@ private fun ColorSwatch(
                     io.brushforge.brushforge.domain.model.PaintFinish.Matte,
                     io.brushforge.brushforge.domain.model.PaintFinish.Unknown -> {
                         // No overlay for matte or unknown
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaintActionsSheet(
+    paint: PaintListItemUiModel,
+    onToggleOwned: (String, Boolean) -> Unit,
+    onToggleWishlist: (String, Boolean) -> Unit,
+    onToggleAlmostEmpty: (String, Boolean) -> Unit,
+    onDelete: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp)
+    ) {
+        // Paint preview
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ColorSwatch(
+                hex = paint.hex,
+                isAlmostEmpty = paint.isAlmostEmpty,
+                finish = paint.paintFinish,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = paint.displayName,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = paint.brand,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Actions
+        Column {
+            // Toggle Owned (for all paints)
+            if (!paint.isOwned) {
+                TextButton(
+                    onClick = {
+                        onToggleOwned(paint.stableId, true)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Add to Owned")
+                    }
+                }
+            } else {
+                TextButton(
+                    onClick = {
+                        onToggleOwned(paint.stableId, false)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(Icons.Filled.RadioButtonUnchecked, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Remove from Owned")
+                    }
+                }
+            }
+
+            // Toggle Wishlist
+            if (!paint.isWishlist) {
+                TextButton(
+                    onClick = {
+                        onToggleWishlist(paint.stableId, true)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(Icons.Filled.Favorite, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Add to Wishlist")
+                    }
+                }
+            } else {
+                TextButton(
+                    onClick = {
+                        onToggleWishlist(paint.stableId, false)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(Icons.Outlined.FavoriteBorder, contentDescription = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Remove from Wishlist")
+                    }
+                }
+            }
+
+            // Toggle Almost Empty (only for owned paints)
+            if (paint.isOwned) {
+                if (!paint.isAlmostEmpty) {
+                    TextButton(
+                        onClick = {
+                            onToggleAlmostEmpty(paint.stableId, true)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Icon(Icons.Filled.Inventory, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Mark as Almost Empty")
+                        }
+                    }
+                } else {
+                    TextButton(
+                        onClick = {
+                            onToggleAlmostEmpty(paint.stableId, false)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Icon(Icons.Filled.Inventory, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Unmark as Almost Empty")
+                        }
+                    }
+                }
+            }
+
+            // Delete (only for custom/mix paints)
+            if (paint.isCustom || paint.isMixed) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                TextButton(
+                    onClick = {
+                        onDelete(paint.stableId)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Delete Paint",
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }
