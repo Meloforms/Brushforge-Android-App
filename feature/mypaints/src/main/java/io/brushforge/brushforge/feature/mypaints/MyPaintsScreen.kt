@@ -267,7 +267,7 @@ private fun MyPaintsContent(
                     LimitReachedBanner(
                         currentCount = state.inventoryCount,
                         limit = state.inventoryLimit,
-                        onDismiss = { /* TODO: Add dismiss logic if needed */ }
+                        onDismiss = { /* No dismiss action needed */ }
                     )
                 }
             }
@@ -380,68 +380,6 @@ private fun SearchAndFilterSection(
 }
 
 @Composable
-private fun CompactFilterSortRow(
-    filterState: PaintFilterState,
-    sortOption: PaintSortOption,
-    onOpenFilters: () -> Unit,
-    onSortOptionSelected: (PaintSortOption) -> Unit
-) {
-    var sortExpanded by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        FilledTonalButton(
-            onClick = onOpenFilters,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Tune,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            val label = if (filterState.activeCount > 0) {
-                "Filters (${filterState.activeCount})"
-            } else {
-                "Filters"
-            }
-            Text(text = label, style = MaterialTheme.typography.labelLarge)
-        }
-        Box(modifier = Modifier.weight(1f)) {
-            FilledTonalButton(
-                onClick = { sortExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Sort,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = sortOption.label, style = MaterialTheme.typography.labelLarge)
-            }
-            DropdownMenu(
-                expanded = sortExpanded,
-                onDismissRequest = { sortExpanded = false }
-            ) {
-                PaintSortOption.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option.label) },
-                        onClick = {
-                            onSortOptionSelected(option)
-                            sortExpanded = false
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ColorFilterRow(
     availableFamilies: List<ColorFamily>,
     selectedFamilies: Set<ColorFamily>,
@@ -477,58 +415,6 @@ private fun ColorFilterRow(
                         )
                     }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FilterSortRow(
-    filterState: PaintFilterState,
-    sortOption: PaintSortOption,
-    onOpenFilters: () -> Unit,
-    onSortOptionSelected: (PaintSortOption) -> Unit
-) {
-    var sortExpanded by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        FilledTonalButton(
-            onClick = onOpenFilters,
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(imageVector = Icons.Outlined.Tune, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            val label = if (filterState.activeCount > 0) {
-                "Filters (${filterState.activeCount})"
-            } else {
-                "Filters"
-            }
-            Text(text = label)
-        }
-        Box(modifier = Modifier.weight(1f)) {
-            FilledTonalButton(
-                onClick = { sortExpanded = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(imageVector = Icons.Outlined.Sort, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Sort: ${sortOption.label}")
-            }
-            DropdownMenu(
-                expanded = sortExpanded,
-                onDismissRequest = { sortExpanded = false }
-            ) {
-                PaintSortOption.entries.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option.label) },
-                        onClick = {
-                            onSortOptionSelected(option)
-                            sortExpanded = false
-                        }
-                    )
-                }
             }
         }
     }
@@ -1011,75 +897,6 @@ private fun <T> TypeDropdown(
 }
 
 @Composable
-private fun CompactInventorySummary(
-    inventoryCount: Int,
-    inventoryLimit: Int,
-    modifier: Modifier = Modifier
-) {
-    val progress = (inventoryCount.toFloat() / inventoryLimit.toFloat()).coerceIn(0f, 1f)
-    val isNearLimit = inventoryCount >= (inventoryLimit * 0.8)
-
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Inventory,
-                contentDescription = null,
-                tint = if (isNearLimit) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = "$inventoryCount / $inventoryLimit",
-                style = MaterialTheme.typography.labelMedium,
-                color = if (isNearLimit) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun InventorySummary(
-    inventoryCount: Int,
-    inventoryLimit: Int,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Inventory,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = "Inventory",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = "$inventoryCount of $inventoryLimit paints tracked",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun SectionHeaderWithActions(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1215,29 +1032,6 @@ private fun LimitReachedBanner(
 }
 
 @Composable
-private fun CompactSectionHeader(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(text = title, style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-@Composable
 private fun SectionHeader(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1283,15 +1077,13 @@ private fun PaintCard(
                     text = item.displayName,
                     style = MaterialTheme.typography.titleSmall
                 )
-                // Show brand and line together, avoiding duplicates
-                val brandDisplay = buildBrandLineDisplay(
-                    brand = item.brand,
-                    line = item.line,
-                    type = item.typeLabel,
-                    finish = item.finishLabel
-                )
+                // Display brand and line (clean data, no workarounds needed!)
+                val brandLine = when {
+                    item.line != null -> "${item.brand} ${item.line}"
+                    else -> item.brand
+                }
                 Text(
-                    text = brandDisplay,
+                    text = brandLine,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF64B5F6) // Light blue for better visibility
                 )
@@ -1508,55 +1300,4 @@ private fun colorFamilyColor(family: ColorFamily): Color = when (family) {
     ColorFamily.Grey -> Color(0xFFB0BEC5)
     ColorFamily.Black -> Color(0xFF424242)
     ColorFamily.White -> Color(0xFFFFFFFF)
-}
-
-/**
- * Intelligently combines brand and line, removing duplicates.
- * Also removes type/finish from line since they're shown separately below.
- */
-private fun buildBrandLineDisplay(
-    brand: String,
-    line: String?,
-    type: String,
-    finish: String
-): String {
-    if (line == null) return brand
-
-    // Remove type and finish from the line since they're shown separately
-    var cleanedLine = line
-
-    // Remove type if it appears in the line
-    if (type.isNotBlank() && type != "Unknown") {
-        cleanedLine = cleanedLine.replace(type, "", ignoreCase = true).trim()
-    }
-
-    // Remove finish if it appears in the line
-    if (finish.isNotBlank() && finish != "Unknown") {
-        cleanedLine = cleanedLine.replace(finish, "", ignoreCase = true).trim()
-    }
-
-    // Clean up any leftover spacing/punctuation
-    cleanedLine = cleanedLine.trim().replace(Regex("\\s+"), " ")
-
-    // If line is now empty after cleanup, just return brand
-    if (cleanedLine.isBlank()) return brand
-
-    // Check if line already starts with the brand name
-    if (cleanedLine.startsWith(brand, ignoreCase = true)) {
-        return cleanedLine
-    }
-
-    // Check if significant words from brand appear in the line
-    val brandWords = brand.split(" ").filter { it.length > 2 } // Words longer than 2 chars
-    val hasSignificantOverlap = brandWords.any { word ->
-        cleanedLine.contains(word, ignoreCase = true)
-    }
-
-    // If there's significant overlap, prefer the longer string
-    if (hasSignificantOverlap) {
-        return if (cleanedLine.length > brand.length) cleanedLine else "$brand $cleanedLine"
-    }
-
-    // Otherwise, combine them
-    return "$brand $cleanedLine"
 }
