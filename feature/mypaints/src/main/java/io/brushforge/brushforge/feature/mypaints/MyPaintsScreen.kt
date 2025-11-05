@@ -83,6 +83,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
 import io.brushforge.brushforge.domain.util.ColorFamily
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import io.brushforge.brushforge.domain.model.PaintType
 import io.brushforge.brushforge.domain.model.PaintFinish
 
@@ -96,6 +102,7 @@ fun MyPaintsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
         viewModel.events.collectLatest { event ->
@@ -195,7 +202,10 @@ fun MyPaintsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = viewModel::onAddButtonClicked) {
+            FloatingActionButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                viewModel.onAddButtonClicked()
+            }) {
                 Icon(Icons.Outlined.Add, contentDescription = "Add paint")
             }
         },
@@ -367,6 +377,15 @@ private fun SearchAndFilterSection(
             }
         )
 
+        // Collection filter tabs (All/Owned/Wishlist)
+        Spacer(modifier = Modifier.height(12.dp))
+        CollectionFilterTabs(
+            selected = state.selectedCollection,
+            ownedCount = state.ownedCount,
+            wishlistCount = state.wishlistCount,
+            onFilterSelected = onCollectionFilterSelected
+        )
+
         // Color filters - always visible like iOS
         Spacer(modifier = Modifier.height(12.dp))
         ColorFilterRow(
@@ -389,6 +408,44 @@ private fun SearchAndFilterSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CollectionFilterTabs(
+    selected: CollectionFilter,
+    ownedCount: Int,
+    wishlistCount: Int,
+    onFilterSelected: (CollectionFilter) -> Unit
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        SegmentedButton(
+            selected = selected == CollectionFilter.All,
+            onClick = { onFilterSelected(CollectionFilter.All) },
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+            icon = {}
+        ) {
+            Text("All")
+        }
+        SegmentedButton(
+            selected = selected == CollectionFilter.Owned,
+            onClick = { onFilterSelected(CollectionFilter.Owned) },
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+            icon = {}
+        ) {
+            Text("Owned ($ownedCount)")
+        }
+        SegmentedButton(
+            selected = selected == CollectionFilter.Wishlist,
+            onClick = { onFilterSelected(CollectionFilter.Wishlist) },
+            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+            icon = {}
+        ) {
+            Text("Wishlist ($wishlistCount)")
+        }
+    }
+}
+
 @Composable
 private fun ColorFilterRow(
     availableFamilies: List<ColorFamily>,
@@ -396,6 +453,8 @@ private fun ColorFilterRow(
     onColorFamilyToggle: (ColorFamily) -> Unit,
     onClearColorFilters: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
@@ -404,7 +463,10 @@ private fun ColorFilterRow(
             val selected = selectedFamilies.contains(family)
             FilterChip(
                 selected = selected,
-                onClick = { onColorFamilyToggle(family) },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onColorFamilyToggle(family)
+                },
                 label = { Text(colorFamilyLabel(family), style = MaterialTheme.typography.labelSmall) },
                 leadingIcon = {
                     Box(
@@ -1147,10 +1209,15 @@ private fun PaintCard(
     onToggleWishlist: (String, Boolean) -> Unit,
     onLongPress: (String) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+
     Card(
         modifier = Modifier.combinedClickable(
             onClick = { onClick(item) },
-            onLongClick = { onLongPress(item.stableId) }
+            onLongClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onLongPress(item.stableId)
+            }
         )
     ) {
         Row(
@@ -1209,26 +1276,55 @@ private fun PaintCard(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Owned toggle with animation
+                val ownedScale by animateFloatAsState(
+                    targetValue = if (item.isOwned) 1.1f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "ownedScale"
+                )
                 IconToggleButton(
                     checked = item.isOwned,
-                    onCheckedChange = { onToggleOwned(item.stableId, it) },
+                    onCheckedChange = { checked ->
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggleOwned(item.stableId, checked)
+                    },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (item.isOwned) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
                         contentDescription = "Owned",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(ownedScale)
                     )
                 }
+
+                // Wishlist toggle with animation
+                val wishlistScale by animateFloatAsState(
+                    targetValue = if (item.isWishlist) 1.1f else 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "wishlistScale"
+                )
                 IconToggleButton(
                     checked = item.isWishlist,
-                    onCheckedChange = { onToggleWishlist(item.stableId, it) },
+                    onCheckedChange = { checked ->
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggleWishlist(item.stableId, checked)
+                    },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (item.isWishlist) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Wishlist",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier
+                            .size(20.dp)
+                            .scale(wishlistScale)
                     )
                 }
             }
