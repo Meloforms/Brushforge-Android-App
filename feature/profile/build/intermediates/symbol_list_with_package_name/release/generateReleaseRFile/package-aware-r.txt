@@ -1,2 +1,0 @@
-io.brushforge.brushforge.feature.profile
-string profile_title

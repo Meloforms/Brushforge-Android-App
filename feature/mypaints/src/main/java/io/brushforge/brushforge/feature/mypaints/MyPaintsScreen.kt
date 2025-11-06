@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Inventory
@@ -35,6 +34,8 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,7 +45,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
@@ -61,11 +61,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Slider
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,7 +81,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -143,10 +146,18 @@ fun MyPaintsScreen(
                 BottomSheetContent.Custom -> AddCustomPaintSheet(
                     form = state.customForm,
                     onNameChanged = viewModel::onCustomNameChanged,
-                    onBrandChanged = viewModel::onCustomBrandChanged,
-                    onHexChanged = viewModel::onCustomHexChanged,
+                    onBrandSelected = viewModel::onCustomBrandSelected,
+                    onCustomBrandInputChanged = viewModel::onCustomBrandInputChanged,
+                    onBrandToggle = viewModel::onCustomBrandToggle,
+                    onToggleBrandDropdown = viewModel::onToggleBrandDropdown,
+                    onColorRedChanged = viewModel::onColorRedChanged,
+                    onColorGreenChanged = viewModel::onColorGreenChanged,
+                    onColorBlueChanged = viewModel::onColorBlueChanged,
                     onTypeSelected = viewModel::onCustomTypeSelected,
                     onFinishSelected = viewModel::onCustomFinishSelected,
+                    onTagInputChanged = viewModel::onCustomTagInputChanged,
+                    onTagAdd = viewModel::onCustomTagAdd,
+                    onTagRemove = viewModel::onCustomTagRemove,
                     onNotesChanged = viewModel::onCustomNotesChanged,
                     onCancel = viewModel::onDismissSheet,
                     onSubmit = viewModel::onSubmitCustomPaint
@@ -155,7 +166,10 @@ fun MyPaintsScreen(
                     form = state.mixForm,
                     options = state.paintOptions,
                     onNameChanged = viewModel::onMixNameChanged,
-                    onBrandChanged = viewModel::onMixBrandChanged,
+                    onBrandSelected = viewModel::onMixBrandSelected,
+                    onCustomBrandInputChanged = viewModel::onMixCustomBrandInputChanged,
+                    onBrandToggle = viewModel::onMixBrandToggle,
+                    onToggleBrandDropdown = viewModel::onMixToggleBrandDropdown,
                     onTypeSelected = viewModel::onMixTypeSelected,
                     onFinishSelected = viewModel::onMixFinishSelected,
                     onNotesChanged = viewModel::onMixNotesChanged,
@@ -184,6 +198,7 @@ fun MyPaintsScreen(
                             onToggleOwned = viewModel::onOwnedToggled,
                             onToggleWishlist = viewModel::onWishlistToggled,
                             onToggleAlmostEmpty = viewModel::onAlmostEmptyToggled,
+                            onEdit = viewModel::onEditCustomPaint,
                             onDelete = viewModel::onDeleteUserPaint,
                             onDismiss = viewModel::onDismissSheet
                         )
@@ -758,74 +773,347 @@ private fun AddPaintMenu(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun AddCustomPaintSheet(
     form: CustomPaintFormState,
     onNameChanged: (String) -> Unit,
-    onBrandChanged: (String) -> Unit,
-    onHexChanged: (String) -> Unit,
+    onBrandSelected: (String?) -> Unit,
+    onCustomBrandInputChanged: (String) -> Unit,
+    onBrandToggle: () -> Unit,
+    onToggleBrandDropdown: () -> Unit,
+    onColorRedChanged: (Float) -> Unit,
+    onColorGreenChanged: (Float) -> Unit,
+    onColorBlueChanged: (Float) -> Unit,
     onTypeSelected: (PaintType?) -> Unit,
     onFinishSelected: (PaintFinish?) -> Unit,
+    onTagInputChanged: (String) -> Unit,
+    onTagAdd: () -> Unit,
+    onTagRemove: (String) -> Unit,
     onNotesChanged: (String) -> Unit,
     onCancel: () -> Unit,
     onSubmit: () -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(text = "Add Custom Paint", style = MaterialTheme.typography.titleMedium)
-        OutlinedTextField(
-            value = form.name,
-            onValueChange = onNameChanged,
-            label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = form.brand,
-            onValueChange = onBrandChanged,
-            label = { Text("Brand") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = form.hex,
-            onValueChange = onHexChanged,
-            label = { Text("Hex color") },
-            modifier = Modifier.fillMaxWidth(),
-            supportingText = form.hexError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-            isError = form.hexError != null
-        )
-        TypeDropdown(
-            label = "Paint type",
-            options = PaintType.entries.toList(),
-            selected = form.type,
-            onSelected = onTypeSelected
-        )
-        TypeDropdown(
-            label = "Finish",
-            options = PaintFinish.entries.toList(),
-            selected = form.finish,
-            onSelected = onFinishSelected
-        )
-        OutlinedTextField(
-            value = form.notes,
-            onValueChange = onNotesChanged,
-            label = { Text("Notes") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = onCancel) {
-                Text("Cancel")
+        item {
+            Text(
+                text = if (form.editingPaintId != null) "Edit Custom Paint" else "Add Custom Paint",
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+
+        // Name field
+        item {
+            OutlinedTextField(
+                value = form.name,
+                onValueChange = onNameChanged,
+                label = { Text("Paint Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Brand selector
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Brand", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Custom",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (form.useCustomBrand) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Switch(
+                            checked = form.useCustomBrand,
+                            onCheckedChange = { onBrandToggle() }
+                        )
+                    }
+                }
+
+                if (form.useCustomBrand) {
+                    OutlinedTextField(
+                        value = form.customBrand,
+                        onValueChange = onCustomBrandInputChanged,
+                        label = { Text("Custom Brand") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    ExposedDropdownMenuBox(
+                        expanded = form.showBrandDropdown,
+                        onExpandedChange = { onToggleBrandDropdown() }
+                    ) {
+                        OutlinedTextField(
+                            value = form.selectedBrand ?: "",
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("Select Brand") },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = "Dropdown"
+                                )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = form.showBrandDropdown,
+                            onDismissRequest = { onToggleBrandDropdown() }
+                        ) {
+                            form.availableBrands.forEach { brand ->
+                                DropdownMenuItem(
+                                    text = { Text(brand) },
+                                    onClick = { onBrandSelected(brand) }
+                                )
+                            }
+                        }
+                    }
+                }
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onSubmit, enabled = form.canSubmit && !form.isSubmitting) {
-                Text(if (form.isSubmitting) "Saving…" else "Save")
+        }
+
+        // Color picker section
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Color",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+
+                // Color preview
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(Color(
+                                red = form.colorRed,
+                                green = form.colorGreen,
+                                blue = form.colorBlue
+                            ))
+                            .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    )
+                    Text(
+                        text = form.hex,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Red slider
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Red", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "${(form.colorRed * 255).toInt()}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = Color(0xFFEF5350)
+                        )
+                    }
+                    Slider(
+                        value = form.colorRed,
+                        onValueChange = onColorRedChanged,
+                        valueRange = 0f..1f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Green slider
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Green", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "${(form.colorGreen * 255).toInt()}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = Color(0xFF66BB6A)
+                        )
+                    }
+                    Slider(
+                        value = form.colorGreen,
+                        onValueChange = onColorGreenChanged,
+                        valueRange = 0f..1f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Blue slider
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Blue", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "${(form.colorBlue * 255).toInt()}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = Color(0xFF42A5F5)
+                        )
+                    }
+                    Slider(
+                        value = form.colorBlue,
+                        onValueChange = onColorBlueChanged,
+                        valueRange = 0f..1f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // Paint type dropdown
+        item {
+            TypeDropdown(
+                label = "Paint Type",
+                options = PaintType.entries.toList(),
+                selected = form.type,
+                onSelected = onTypeSelected
+            )
+        }
+
+        // Finish dropdown
+        item {
+            TypeDropdown(
+                label = "Finish",
+                options = PaintFinish.entries.toList(),
+                selected = form.finish,
+                onSelected = onFinishSelected
+            )
+        }
+
+        // Tags section
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Tags",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
+
+                // Tag input
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = form.tagInput,
+                        onValueChange = onTagInputChanged,
+                        label = { Text("Add tag") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                    Button(
+                        onClick = onTagAdd,
+                        enabled = form.tagInput.trim().isNotBlank()
+                    ) {
+                        Text("Add")
+                    }
+                }
+
+                // Display tags
+                if (form.tags.isNotEmpty()) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        form.tags.forEach { tag ->
+                            InputChip(
+                                selected = false,
+                                onClick = { },
+                                label = { Text(tag) },
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "Remove",
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { onTagRemove(tag) }
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Notes field
+        item {
+            OutlinedTextField(
+                value = form.notes,
+                onValueChange = onNotesChanged,
+                label = { Text("Notes (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+                maxLines = 4
+            )
+        }
+
+        // Action buttons
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+            ) {
+                TextButton(onClick = onCancel) {
+                    Text("Cancel")
+                }
+                Button(
+                    onClick = onSubmit,
+                    enabled = form.canSubmit && !form.isSubmitting
+                ) {
+                    Text(if (form.isSubmitting) "Saving…" else "Save")
+                }
             }
         }
     }
@@ -837,7 +1125,10 @@ private fun AddMixPaintSheet(
     form: MixPaintFormState,
     options: List<PaintOption>,
     onNameChanged: (String) -> Unit,
-    onBrandChanged: (String) -> Unit,
+    onBrandSelected: (String?) -> Unit,
+    onCustomBrandInputChanged: (String) -> Unit,
+    onBrandToggle: () -> Unit,
+    onToggleBrandDropdown: () -> Unit,
     onTypeSelected: (PaintType?) -> Unit,
     onFinishSelected: (PaintFinish?) -> Unit,
     onNotesChanged: (String) -> Unit,
@@ -848,95 +1139,185 @@ private fun AddMixPaintSheet(
     onCancel: () -> Unit,
     onSubmit: () -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(text = "Mix Paints", style = MaterialTheme.typography.titleMedium)
-        if (options.isEmpty()) {
-            Text(text = "No paints available to mix yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onCancel, modifier = Modifier.align(Alignment.End)) { Text("Close") }
-            return
+        item {
+            Text(text = "Mix Paints", style = MaterialTheme.typography.titleMedium)
         }
 
-        OutlinedTextField(
-            value = form.name,
-            onValueChange = onNameChanged,
-            label = { Text("Mix name") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = form.brand,
-            onValueChange = onBrandChanged,
-            label = { Text("Brand") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        TypeDropdown(
-            label = "Paint type",
-            options = PaintType.entries.toList(),
-            selected = form.type,
-            onSelected = onTypeSelected
-        )
-
-        TypeDropdown(
-            label = "Finish",
-            options = PaintFinish.entries.toList(),
-            selected = form.finish,
-            onSelected = onFinishSelected
-        )
-
-        Text(text = "Components", style = MaterialTheme.typography.titleSmall)
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            form.components.forEach { component ->
-                MixComponentRow(
-                    component = component,
-                    options = options,
-                    onPaintSelected = { onComponentPaintChanged(component.id, it) },
-                    onPercentageChanged = { onComponentPercentageChanged(component.id, it) },
-                    onRemove = { onRemoveComponent(component.id) },
-                    canRemove = form.components.size > 1
-                )
+        if (options.isEmpty()) {
+            item {
+                Text(text = "No paints available to mix yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (form.components.size < 3) {
+            item {
+                Button(onCancel, modifier = Modifier.fillMaxWidth()) { Text("Close") }
+            }
+        } else {
+
+        item {
+            OutlinedTextField(
+                value = form.name,
+                onValueChange = onNameChanged,
+                label = { Text("Mix name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Brand selector
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Brand", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Custom",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (form.useCustomBrand) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Switch(
+                            checked = form.useCustomBrand,
+                            onCheckedChange = { onBrandToggle() }
+                        )
+                    }
+                }
+
+                if (form.useCustomBrand) {
+                    OutlinedTextField(
+                        value = form.customBrand,
+                        onValueChange = onCustomBrandInputChanged,
+                        label = { Text("Custom Brand") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    ExposedDropdownMenuBox(
+                        expanded = form.showBrandDropdown,
+                        onExpandedChange = { onToggleBrandDropdown() }
+                    ) {
+                        OutlinedTextField(
+                            value = form.selectedBrand ?: "",
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("Select Brand") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = form.showBrandDropdown) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        DropdownMenu(
+                            expanded = form.showBrandDropdown,
+                            onDismissRequest = { onToggleBrandDropdown() }
+                        ) {
+                            form.availableBrands.forEach { brand ->
+                                DropdownMenuItem(
+                                    text = { Text(brand) },
+                                    onClick = { onBrandSelected(brand) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            TypeDropdown(
+                label = "Paint type",
+                options = PaintType.entries.toList(),
+                selected = form.type,
+                onSelected = onTypeSelected
+            )
+        }
+
+        item {
+            TypeDropdown(
+                label = "Finish",
+                options = PaintFinish.entries.toList(),
+                selected = form.finish,
+                onSelected = onFinishSelected
+            )
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
+            Text(
+                text = "Components",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+        }
+
+        items(form.components) { component ->
+            MixComponentRow(
+                component = component,
+                options = options,
+                onPaintSelected = { onComponentPaintChanged(component.id, it) },
+                onPercentageChanged = { onComponentPercentageChanged(component.id, it) },
+                onRemove = { onRemoveComponent(component.id) },
+                canRemove = form.components.size > 1
+            )
+        }
+
+        if (form.components.size < 3) {
+            item {
                 TextButton(onClick = onAddComponent) {
                     Text("Add component")
                 }
             }
         }
 
-        val totalPercentage = form.components.sumOf { it.percentage.toDoubleOrNull() ?: 0.0 }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            form.previewHex?.let {
-                ColorSwatch(hex = it, modifier = Modifier.size(32.dp))
+        item {
+            val totalPercentage = form.components.sumOf { it.percentage.toDoubleOrNull() ?: 0.0 }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                form.previewHex?.let {
+                    ColorSwatch(hex = it, modifier = Modifier.size(32.dp))
+                }
+                Text(text = "Total percentage: ${"%.1f".format(totalPercentage)}", style = MaterialTheme.typography.bodyMedium)
             }
-            Text(text = "Total percentage: ${"%.1f".format(totalPercentage)}", style = MaterialTheme.typography.bodyMedium)
         }
 
-        OutlinedTextField(
-            value = form.notes,
-            onValueChange = onNotesChanged,
-            label = { Text("Notes") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 2
-        )
-
-        form.validationError?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        item {
+            OutlinedTextField(
+                value = form.notes,
+                onValueChange = onNotesChanged,
+                label = { Text("Notes") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onCancel) { Text("Cancel") }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onSubmit, enabled = form.canSubmit && !form.isSubmitting) {
-                Text(if (form.isSubmitting) "Saving…" else "Save mix")
+        form.validationError?.let { error ->
+            item {
+                Text(text = error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onCancel) { Text("Cancel") }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = onSubmit, enabled = form.canSubmit && !form.isSubmitting) {
+                    Text(if (form.isSubmitting) "Saving…" else "Save mix")
+                }
+            }
+        }
         }
     }
 }
@@ -952,50 +1333,114 @@ private fun MixComponentRow(
     canRemove: Boolean
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                shape = MaterialTheme.shapes.medium
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         var expanded by remember { mutableStateOf(false) }
         val selectedOption = options.firstOrNull { it.stableId == component.paintStableId }
 
-        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-            OutlinedTextField(
-                value = selectedOption?.displayName ?: "Select paint",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Paint") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text("${option.displayName} (${option.brand})") },
-                        onClick = {
-                            onPaintSelected(option.stableId)
-                            expanded = false
-                        }
-                    )
+        // Paint selector with color preview
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Color swatch
+            selectedOption?.let {
+                ColorSwatch(
+                    hex = it.hex,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+
+            // Paint dropdown
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = it },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = selectedOption?.displayName ?: "Select paint",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Paint") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    ColorSwatch(hex = option.hex, modifier = Modifier.size(24.dp))
+                                    Text("${option.displayName} (${option.brand})")
+                                }
+                            },
+                            onClick = {
+                                onPaintSelected(option.stableId)
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
         }
 
-        OutlinedTextField(
-            value = component.percentage,
-            onValueChange = onPercentageChanged,
-            label = { Text("Percentage") },
-            suffix = { Text("%") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-            isError = component.percentageError != null,
-            supportingText = component.percentageError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } }
-        )
+        // Percentage slider
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Percentage", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    text = "${component.percentage.ifEmpty { "0" }}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Slider(
+                value = component.percentage.toFloatOrNull() ?: 0f,
+                onValueChange = { onPercentageChanged(it.toInt().toString()) },
+                valueRange = 0f..100f,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (component.percentageError != null) {
+                Text(
+                    text = component.percentageError,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
 
         if (canRemove) {
-            TextButton(onClick = onRemove, modifier = Modifier.align(Alignment.End)) {
-                Text("Remove component")
+            TextButton(
+                onClick = onRemove,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Remove")
             }
         }
     }
@@ -1351,7 +1796,7 @@ private fun ColorSwatch(
             .then(
                 if (isAlmostEmpty) {
                     Modifier.border(
-                        width = 2.dp,
+                        width = 1.dp,
                         color = color,
                         shape = MaterialTheme.shapes.small
                     )
@@ -1472,9 +1917,36 @@ private fun PaintActionsSheet(
     onToggleOwned: (String, Boolean) -> Unit,
     onToggleWishlist: (String, Boolean) -> Unit,
     onToggleAlmostEmpty: (String, Boolean) -> Unit,
+    onEdit: (String) -> Unit,
     onDelete: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Paint?") },
+            text = { Text("Are you sure you want to delete \"${paint.displayName}\"? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDelete(paint.stableId)
+                        onDismiss()
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1624,13 +2096,34 @@ private fun PaintActionsSheet(
                 }
             }
 
-            // Delete (only for custom/mix paints)
+            // Edit and Delete (only for custom/mix paints)
             if (paint.isCustom || paint.isMixed) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // Edit (only for custom paints, not mixed)
+                if (paint.isCustom) {
+                    TextButton(
+                        onClick = {
+                            onEdit(paint.stableId)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Edit Paint")
+                        }
+                    }
+                }
+
+                // Delete
                 TextButton(
                     onClick = {
-                        onDelete(paint.stableId)
-                        onDismiss()
+                        showDeleteConfirmation = true
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {

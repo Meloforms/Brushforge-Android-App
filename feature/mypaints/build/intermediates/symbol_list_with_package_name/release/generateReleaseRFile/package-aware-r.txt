@@ -1,2 +1,0 @@
-io.brushforge.brushforge.feature.mypaints
-string my_paints_title
