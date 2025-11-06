@@ -25,14 +25,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Edit
@@ -76,8 +75,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -137,7 +134,7 @@ fun MyPaintsScreen(
             onDismissRequest = { viewModel.onDismissSheet() },
             sheetState = sheetState
         ) {
-            when (state.activeSheet) {
+            when (state.activeSheet!!) {
                 BottomSheetContent.Menu -> AddPaintMenu(
                     onAddCustom = viewModel::onAddCustomSelected,
                     onMixPaints = viewModel::onAddMixSelected,
@@ -204,7 +201,6 @@ fun MyPaintsScreen(
                         )
                     }
                 }
-                null -> Unit
             }
         }
     }
@@ -304,9 +300,7 @@ private fun MyPaintsContent(
             if (state.inventoryCount >= state.inventoryLimit) {
                 item {
                     LimitReachedBanner(
-                        currentCount = state.inventoryCount,
-                        limit = state.inventoryLimit,
-                        onDismiss = { /* No dismiss action needed */ }
+                        limit = state.inventoryLimit
                     )
                 }
             }
@@ -406,8 +400,7 @@ private fun SearchAndFilterSection(
         ColorFilterRow(
             availableFamilies = state.availableColorFamilies,
             selectedFamilies = state.selectedColorFamilies,
-            onColorFamilyToggle = onColorFamilyToggle,
-            onClearColorFilters = onClearColorFilters
+            onColorFamilyToggle = onColorFamilyToggle
         )
 
         // Active filters - only show if active
@@ -465,8 +458,7 @@ private fun CollectionFilterTabs(
 private fun ColorFilterRow(
     availableFamilies: List<ColorFamily>,
     selectedFamilies: Set<ColorFamily>,
-    onColorFamilyToggle: (ColorFamily) -> Unit,
-    onClearColorFilters: () -> Unit
+    onColorFamilyToggle: (ColorFamily) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -867,7 +859,7 @@ private fun AddCustomPaintSheet(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = form.showBrandDropdown,
@@ -1211,7 +1203,7 @@ private fun AddMixPaintSheet(
                             label = { Text("Select Brand") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = form.showBrandDropdown) },
                             modifier = Modifier
-                                .menuAnchor()
+                                .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
                                 .fillMaxWidth()
                         )
                         DropdownMenu(
@@ -1372,7 +1364,7 @@ private fun MixComponentRow(
                     label = { Text("Paint") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth()
                 )
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -1469,7 +1461,7 @@ private fun <T> TypeDropdown(
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
-                .menuAnchor()
+                .menuAnchor(androidx.compose.material3.MenuAnchorType.PrimaryNotEditable)
                 .fillMaxWidth()
         )
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -1493,101 +1485,8 @@ private fun <T> TypeDropdown(
 }
 
 @Composable
-private fun SectionHeaderWithActions(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    filterState: PaintFilterState,
-    sortOption: PaintSortOption,
-    onOpenFilters: () -> Unit,
-    onSortOptionSelected: (PaintSortOption) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var sortExpanded by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Section title with icon
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-        }
-
-        // Filter and Sort action icons
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            // Filter icon button
-            IconToggleButton(
-                checked = filterState.activeCount > 0,
-                onCheckedChange = { onOpenFilters() },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Tune,
-                    contentDescription = "Filters",
-                    modifier = Modifier.size(20.dp),
-                    tint = if (filterState.activeCount > 0) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-            }
-
-            // Sort icon button with dropdown
-            Box {
-                IconToggleButton(
-                    checked = false,
-                    onCheckedChange = { sortExpanded = true },
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Sort,
-                        contentDescription = "Sort",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded = sortExpanded,
-                    onDismissRequest = { sortExpanded = false }
-                ) {
-                    PaintSortOption.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = { Text(option.label) },
-                            onClick = {
-                                onSortOptionSelected(option)
-                                sortExpanded = false
-                            },
-                            trailingIcon = if (sortOption == option) {
-                                { Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            } else null
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun LimitReachedBanner(
-    currentCount: Int,
     limit: Int,
-    onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1624,24 +1523,6 @@ private fun LimitReachedBanner(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SectionHeader(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 4.dp, start = 16.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = title, style = MaterialTheme.typography.titleSmall)
     }
 }
 
@@ -1781,7 +1662,7 @@ private fun PaintCard(
 private fun ColorSwatch(
     hex: String,
     isAlmostEmpty: Boolean = false,
-    finish: io.brushforge.brushforge.domain.model.PaintFinish? = null,
+    finish: PaintFinish? = null,
     modifier: Modifier = Modifier
 ) {
     val color = runCatching { Color(android.graphics.Color.parseColor(hex)) }
@@ -1844,7 +1725,7 @@ private fun ColorSwatch(
                     .clip(MaterialTheme.shapes.small)
             ) {
                 when (finish) {
-                    io.brushforge.brushforge.domain.model.PaintFinish.Metallic -> {
+                    PaintFinish.Metallic -> {
                         // Metallic shine effect - diagonal gradient
                         val gradient = androidx.compose.ui.graphics.Brush.linearGradient(
                             colors = listOf(
@@ -1859,7 +1740,7 @@ private fun ColorSwatch(
                         )
                         drawRect(brush = gradient)
                     }
-                    io.brushforge.brushforge.domain.model.PaintFinish.Gloss -> {
+                    PaintFinish.Gloss -> {
                         // Glossy reflection effect - top highlight
                         val gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(
@@ -1871,7 +1752,7 @@ private fun ColorSwatch(
                         )
                         drawRect(brush = gradient)
                     }
-                    io.brushforge.brushforge.domain.model.PaintFinish.Satin -> {
+                    PaintFinish.Satin -> {
                         // Satin subtle sheen - very light reflection
                         val gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(
@@ -1883,7 +1764,7 @@ private fun ColorSwatch(
                         )
                         drawRect(brush = gradient)
                     }
-                    io.brushforge.brushforge.domain.model.PaintFinish.Transparent -> {
+                    PaintFinish.Transparent -> {
                         // Checkerboard pattern for transparent
                         val squareSize = size.width / 6
                         for (row in 0..5) {
@@ -1901,8 +1782,8 @@ private fun ColorSwatch(
                             }
                         }
                     }
-                    io.brushforge.brushforge.domain.model.PaintFinish.Matte,
-                    io.brushforge.brushforge.domain.model.PaintFinish.Unknown -> {
+                    PaintFinish.Matte,
+                    PaintFinish.Unknown -> {
                         // No overlay for matte or unknown
                     }
                 }
