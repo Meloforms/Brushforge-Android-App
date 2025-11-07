@@ -86,6 +86,11 @@ fun ConverterScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    // Load paint from stableId if provided via navigation
+    LaunchedEffect(Unit) {
+        viewModel.loadPaintFromNavigationIfNeeded()
+    }
+
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {

@@ -48,7 +48,10 @@ fun BrushforgeApp(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val bottomBarRoutes = destinations.map { it.route }
-    val shouldShowBottomBar = currentDestination?.route in bottomBarRoutes
+    // Check if current route starts with any bottom bar route (to handle parametrized routes)
+    val shouldShowBottomBar = currentDestination?.route?.let { route ->
+        bottomBarRoutes.any { route.startsWith(it) }
+    } ?: false
 
     Scaffold(
         modifier = modifier,
@@ -75,7 +78,14 @@ fun BrushforgeApp(
             startDestination = BrushforgeDestination.Converter.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(BrushforgeDestination.Converter.route) {
+            composable(
+                route = "converter?stableId={stableId}",
+                arguments = listOf(navArgument("stableId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) {
                 ConverterScreen()
             }
             composable(BrushforgeDestination.MyPaints.route) {
@@ -113,9 +123,10 @@ fun BrushforgeApp(
             ) {
                 RecipeDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToConverter = { hex, name, brand ->
-                        // Navigate to converter tab to find substitutes
-                        navController.navigate(BrushforgeDestination.Converter.route) {
+                    onNavigateToConverter = { catalogPaint ->
+                        // Navigate to converter tab with paint to find substitutes
+                        val encoded = Uri.encode(catalogPaint.stableId)
+                        navController.navigate("converter?stableId=$encoded") {
                             popUpTo(navController.graph.startDestinationId) {
                                 saveState = true
                             }
