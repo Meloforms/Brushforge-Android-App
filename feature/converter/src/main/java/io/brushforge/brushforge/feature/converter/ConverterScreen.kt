@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
@@ -115,6 +116,7 @@ fun ConverterScreen(
                 state = state,
                 onBrandFilterChanged = viewModel::onSearchBrandFilterChanged,
                 onTypeFilterChanged = viewModel::onSearchTypeFilterChanged,
+                onOwnedFilterChanged = viewModel::onSearchOwnedFilterChanged,
                 onClearAll = viewModel::onClearSearchFilters,
                 onClose = viewModel::onCloseFilterSheet
             )
@@ -532,7 +534,34 @@ private fun ResultsView(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (state.filteredMatches.isEmpty()) {
+            if (state.isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(64.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "Finding similar paints...",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Ranking candidates by ΔE and confidence",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else if (state.filteredMatches.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier
@@ -884,11 +913,12 @@ private fun DetailView(state: ConverterUiState) {
                                 Text(
                                     text = "SOURCE",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Box(
                                     modifier = Modifier
-                                        .size(80.dp)
+                                        .size(96.dp)
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(Color(sourcePaint.hex.toColorInt()))
                                         .border(
@@ -912,44 +942,32 @@ private fun DetailView(state: ConverterUiState) {
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                                sourcePaint.code?.let { code ->
+                                    Text(
+                                        text = code,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        maxLines = 1
+                                    )
+                                }
                             }
 
-                            // Quality indicator column
+                            // Comparison indicator column
                             Column(
                                 modifier = Modifier.weight(0.4f),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    imageVector = Icons.Default.SwapHoriz,
+                                    contentDescription = "Comparison",
+                                    modifier = Modifier.size(32.dp),
+                                    tint = when {
+                                        match.isExcellentMatch -> Color(0xFF4CAF50)
+                                        match.isGoodMatch -> Color(0xFF2196F3)
+                                        else -> Color(0xFFFF9800)
+                                    }
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                // Quality badge
-                                Card(
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = when {
-                                            match.isExcellentMatch -> Color(0xFF4CAF50)
-                                            match.isGoodMatch -> Color(0xFF2196F3)
-                                            else -> Color(0xFFFF9800)
-                                        }.copy(alpha = 0.2f)
-                                    )
-                                ) {
-                                    Text(
-                                        text = match.qualityDescription,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = when {
-                                            match.isExcellentMatch -> Color(0xFF4CAF50)
-                                            match.isGoodMatch -> Color(0xFF2196F3)
-                                            else -> Color(0xFFFF9800)
-                                        },
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                                        maxLines = 1
-                                    )
-                                }
                             }
 
                             // Match column
@@ -961,11 +979,12 @@ private fun DetailView(state: ConverterUiState) {
                                 Text(
                                     text = "MATCH",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Box(
                                     modifier = Modifier
-                                        .size(80.dp)
+                                        .size(96.dp)
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(Color(match.paint.hex.toColorInt()))
                                         .border(
@@ -989,34 +1008,79 @@ private fun DetailView(state: ConverterUiState) {
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                                match.paint.code?.let { code ->
+                                    Text(
+                                        text = code,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
 
-                        // Color comparison strip
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(32.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                        // Color comparison strip with labels
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Box(
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Direct Comparison",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                // Quality badge
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = when {
+                                            match.isExcellentMatch -> Color(0xFF4CAF50)
+                                            match.isGoodMatch -> Color(0xFF2196F3)
+                                            else -> Color(0xFFFF9800)
+                                        }.copy(alpha = 0.2f)
+                                    )
+                                ) {
+                                    Text(
+                                        text = match.qualityDescription,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = when {
+                                            match.isExcellentMatch -> Color(0xFF4CAF50)
+                                            match.isGoodMatch -> Color(0xFF2196F3)
+                                            else -> Color(0xFFFF9800)
+                                        },
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .background(Color(sourcePaint.hex.toColorInt()))
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .width(2.dp)
-                                    .fillMaxHeight()
-                                    .background(MaterialTheme.colorScheme.surface)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .background(Color(match.paint.hex.toColorInt()))
-                            )
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .background(Color(sourcePaint.hex.toColorInt()))
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .width(3.dp)
+                                        .fillMaxHeight()
+                                        .background(MaterialTheme.colorScheme.surface)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .background(Color(match.paint.hex.toColorInt()))
+                                )
+                            }
                         }
 
                         // Quick info badges
@@ -1449,8 +1513,8 @@ private fun DetailAnalysisTab(
                         val diff = match - source
                         when {
                             kotlin.math.abs(diff) < 5 -> "Similar lightness"
-                            diff > 0 -> "Slightly Darker"
-                            else -> "Slightly Lighter"
+                            diff > 0 -> "Slightly Lighter"
+                            else -> "Slightly Darker"
                         }
                     }
                 )
@@ -1504,18 +1568,57 @@ private fun DetailAnalysisTab(
                     maxValue = 360.0,
                     getLabelForValue = { value ->
                         when {
-                            value < 180 -> "Shifts toward Orange"
-                            value > 180 -> "Shifts toward Orange"
-                            else -> ""
+                            value < 30 -> "Red"
+                            value < 60 -> "Orange"
+                            value < 120 -> "Yellow"
+                            value < 180 -> "Green"
+                            value < 240 -> "Cyan"
+                            value < 300 -> "Blue"
+                            value < 330 -> "Purple"
+                            else -> "Red"
                         }
                     },
                     getComparisonText = { source, match ->
-                        val diff = kotlin.math.abs(match - source)
-                        val normalizedDiff = if (diff > 180) 360 - diff else diff
+                        // Calculate shortest distance around the hue circle
+                        val rawDiff = match - source
+                        val normalizedDiff = when {
+                            rawDiff > 180 -> rawDiff - 360
+                            rawDiff < -180 -> rawDiff + 360
+                            else -> rawDiff
+                        }
+
+                        val absDiff = kotlin.math.abs(normalizedDiff)
+                        val direction = when {
+                            absDiff < 5 -> return@AnalysisBarItem "Same hue"
+                            normalizedDiff > 0 -> {
+                                // Moving clockwise on color wheel
+                                when {
+                                    match < 30 || match >= 330 -> "toward Red"
+                                    match < 60 -> "toward Orange"
+                                    match < 120 -> "toward Yellow"
+                                    match < 180 -> "toward Green"
+                                    match < 240 -> "toward Cyan"
+                                    match < 300 -> "toward Blue"
+                                    else -> "toward Purple"
+                                }
+                            }
+                            else -> {
+                                // Moving counter-clockwise on color wheel
+                                when {
+                                    match < 30 || match >= 330 -> "toward Red"
+                                    match < 60 -> "toward Orange"
+                                    match < 120 -> "toward Yellow"
+                                    match < 180 -> "toward Green"
+                                    match < 240 -> "toward Cyan"
+                                    match < 300 -> "toward Blue"
+                                    else -> "toward Purple"
+                                }
+                            }
+                        }
+
                         when {
-                            normalizedDiff < 5 -> "Same hue"
-                            normalizedDiff < 15 -> "Slightly Shifts toward Orange"
-                            else -> "Noticeably Shifts toward Orange"
+                            absDiff < 15 -> "Slightly shifts $direction"
+                            else -> "Noticeably shifts $direction"
                         }
                     }
                 )
@@ -1633,40 +1736,58 @@ private fun AnalysisBarItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(40.dp)
+                .height(48.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         ) {
-            // Source marker
+            // Source marker (triangle at top)
             val sourcePosition = ((sourceValue - minValue) / (maxValue - minValue)).toFloat().coerceIn(0f, 1f)
             Box(
                 modifier = Modifier
                     .fillMaxWidth(sourcePosition)
                     .align(Alignment.CenterStart)
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .height(40.dp)
-                        .align(Alignment.CenterEnd)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
+                Column(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "▼",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .height(24.dp)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
 
-            // Match marker
+            // Match marker (triangle at bottom)
             val matchPosition = ((matchValue - minValue) / (maxValue - minValue)).toFloat().coerceIn(0f, 1f)
             Box(
                 modifier = Modifier
                     .fillMaxWidth(matchPosition)
                     .align(Alignment.CenterStart)
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .height(40.dp)
-                        .align(Alignment.CenterEnd)
-                        .background(iconColor)
-                )
+                Column(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .height(24.dp)
+                            .background(iconColor)
+                    )
+                    Text(
+                        text = "▲",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = iconColor
+                    )
+                }
             }
 
             // Labels
@@ -1680,14 +1801,33 @@ private fun AnalysisBarItem(
                 Text(
                     text = getLabelForValue(minValue + 25),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = getLabelForValue(maxValue - 25),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
                 )
             }
+        }
+
+        // Value indicators
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Source: %.1f".format(sourceValue),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Match: %.1f".format(matchValue),
+                style = MaterialTheme.typography.labelSmall,
+                color = iconColor
+            )
         }
     }
 }
@@ -1916,6 +2056,7 @@ private fun SearchFilterSheet(
     state: ConverterUiState,
     onBrandFilterChanged: (String?) -> Unit,
     onTypeFilterChanged: (PaintType?) -> Unit,
+    onOwnedFilterChanged: (SearchOwnedFilter) -> Unit,
     onClearAll: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -1992,6 +2133,25 @@ private fun SearchFilterSheet(
                             label = { Text(type.rawValue) }
                         )
                     }
+            }
+        }
+
+        HorizontalDivider()
+
+        // Owned/Wishlist Filter
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(text = "Collection", style = MaterialTheme.typography.titleSmall)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SearchOwnedFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = state.searchOwnedFilter == filter,
+                        onClick = { onOwnedFilterChanged(filter) },
+                        label = { Text(filter.displayName) }
+                    )
+                }
             }
         }
 
