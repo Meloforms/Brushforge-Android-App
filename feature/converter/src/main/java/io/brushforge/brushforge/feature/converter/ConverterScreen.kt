@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -71,6 +72,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.graphics.toColorInt
 import io.brushforge.brushforge.domain.model.CatalogPaint
 import io.brushforge.brushforge.domain.model.PaintType
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,7 +189,8 @@ fun ConverterScreen(
                 ConverterView.Results -> ResultsView(
                     state = state,
                     onMatchSelected = viewModel::onMatchSelected,
-                    onSortOptionChanged = viewModel::onSortOptionChanged
+                    onSortOptionChanged = viewModel::onSortOptionChanged,
+                    onToggleOwnedOnly = viewModel::onToggleOwnedOnly
                 )
                 ConverterView.MixResults -> MixResultsView(
                     state = state,
@@ -478,7 +482,8 @@ private fun PaintSearchResultItem(
 private fun ResultsView(
     state: ConverterUiState,
     onMatchSelected: (io.brushforge.brushforge.domain.model.PaintMatch) -> Unit,
-    onSortOptionChanged: (MatchSortOption) -> Unit
+    onSortOptionChanged: (MatchSortOption) -> Unit,
+    onToggleOwnedOnly: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Filter/Sort Controls
@@ -487,14 +492,34 @@ private fun ResultsView(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Sort by:", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MatchSortOption.entries.forEach { option ->
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Sort section
+                Column {
+                    Text("Sort by:", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MatchSortOption.entries.forEach { option ->
+                            FilterChip(
+                                selected = state.sortOption == option,
+                                onClick = { onSortOptionChanged(option) },
+                                label = { Text(option.displayName) }
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // Filter section
+                Column {
+                    Text("Filter:", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
-                            selected = state.sortOption == option,
-                            onClick = { onSortOptionChanged(option) },
-                            label = { Text(option.displayName) }
+                            selected = state.showOwnedOnly,
+                            onClick = onToggleOwnedOnly,
+                            label = { Text("Owned only") }
                         )
                     }
                 }
@@ -626,11 +651,38 @@ private fun MixResultsView(
     state: ConverterUiState,
     onRecipeSelected: (io.brushforge.brushforge.domain.model.PaintMixRecipe) -> Unit
 ) {
+    val loadingSteps = remember {
+        listOf(
+            "Preparing candidate paints",
+            "Testing 2-paint combinations",
+            "Exploring 3-paint combinations",
+            "Scoring mixes for Delta E accuracy",
+            "Selecting the most practical recipes"
+        )
+    }
+    var loadingMessageIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(state.isLoading) {
+        if (state.isLoading) {
+            loadingMessageIndex = 0
+            while (isActive) {
+                delay(1500)
+                loadingMessageIndex = (loadingMessageIndex + 1) % loadingSteps.size
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        state.selectedSourcePaint?.let { targetPaint ->
+            item {
+                TargetMixHeader(paint = targetPaint)
+            }
+        }
+
         if (state.isLoading) {
             item {
                 Box(
@@ -651,7 +703,7 @@ private fun MixResultsView(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Testing 2-paint and 3-paint combinations",
+                            text = loadingSteps[loadingMessageIndex % loadingSteps.size],
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -678,6 +730,56 @@ private fun MixResultsView(
                 MixRecipeItem(
                     recipe = recipe,
                     onClick = { onRecipeSelected(recipe) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TargetMixHeader(paint: CatalogPaint) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(paint.hex.toColorInt()))
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Target paint",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = paint.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${paint.brand}${paint.line?.let { " · $it" } ?: ""}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
