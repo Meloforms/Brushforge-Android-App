@@ -35,6 +35,7 @@ import io.brushforge.brushforge.feature.converter.ConverterScreen
 import io.brushforge.brushforge.feature.mypaints.MyPaintsScreen
 import io.brushforge.brushforge.feature.mypaints.PaintDetailScreen
 import io.brushforge.brushforge.feature.palettes.PalettesScreen
+import io.brushforge.brushforge.feature.palettes.RecipeDetailScreen
 import io.brushforge.brushforge.feature.primed.PrimedScreen
 import io.brushforge.brushforge.feature.profile.ProfileScreen
 
@@ -100,7 +101,29 @@ fun BrushforgeApp(
                 )
             }
             composable(BrushforgeDestination.Palettes.route) {
-                PalettesScreen()
+                PalettesScreen(
+                    onNavigateToDetail = { recipeId ->
+                        navController.navigate("palettes/detail/$recipeId")
+                    }
+                )
+            }
+            composable(
+                route = "palettes/detail/{recipeId}",
+                arguments = listOf(navArgument("recipeId") { type = NavType.StringType })
+            ) {
+                RecipeDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToConverter = { hex, name, brand ->
+                        // Navigate to converter tab to find substitutes
+                        navController.navigate(BrushforgeDestination.Converter.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(BrushforgeDestination.Primed.route) {
                 PrimedScreen()
