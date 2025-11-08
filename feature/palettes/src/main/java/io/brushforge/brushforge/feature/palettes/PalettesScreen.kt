@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -23,6 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,13 +37,18 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,14 +64,36 @@ import io.brushforge.brushforge.domain.model.Recipe
 @Composable
 fun PalettesScreen(
     viewModel: PalettesViewModel = hiltViewModel(),
-    onNavigateToDetail: (String) -> Unit = {}
+    onNavigateToDetail: (String) -> Unit = {},
+    onNavigateToBrowse: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    var showAddMenu by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Handle navigation to detail
     state.selectedRecipeId?.let { recipeId ->
         onNavigateToDetail(recipeId)
         viewModel.onBackFromDetail()
+    }
+
+    if (showAddMenu) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddMenu = false },
+            sheetState = sheetState
+        ) {
+            AddRecipeMenu(
+                onCreateCustom = {
+                    showAddMenu = false
+                    viewModel.onCreateNewRecipe()
+                },
+                onBrowseCatalog = {
+                    showAddMenu = false
+                    onNavigateToBrowse()
+                },
+                onDismiss = { showAddMenu = false }
+            )
+        }
     }
 
     Scaffold(
@@ -73,9 +104,9 @@ fun PalettesScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = viewModel::onCreateNewRecipe
+                onClick = { showAddMenu = true }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Create Recipe")
+                Icon(Icons.Default.Add, contentDescription = "Add Recipe")
             }
         }
     ) { padding ->
@@ -95,7 +126,8 @@ fun PalettesScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding),
-                    onCreateRecipe = viewModel::onCreateNewRecipe
+                    onCreateRecipe = viewModel::onCreateNewRecipe,
+                    onBrowseRecipes = onNavigateToBrowse
                 )
             }
             else -> {
@@ -280,6 +312,7 @@ private fun RecipeCard(
 @Composable
 private fun EmptyState(
     onCreateRecipe: () -> Unit,
+    onBrowseRecipes: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -300,7 +333,7 @@ private fun EmptyState(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Create your first paint recipe to get started",
+                text = "Create your first paint recipe or browse our collection",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -308,7 +341,124 @@ private fun EmptyState(
             FloatingActionButton(onClick = onCreateRecipe) {
                 Icon(Icons.Default.Add, contentDescription = "Create Recipe")
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = onBrowseRecipes) {
+                Text("Browse Recipe Catalog")
+            }
         }
+    }
+}
+
+@Composable
+private fun AddRecipeMenu(
+    onCreateCustom: () -> Unit,
+    onBrowseCatalog: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Add Recipe",
+                style = MaterialTheme.typography.titleLarge
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Close"
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Create Custom Recipe option
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCreateCustom() }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Create Custom",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Build your own recipe from scratch.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Browse Recipes option
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onBrowseCatalog() }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = "Browse Recipes",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "Find pre-made recipes from our collection.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 

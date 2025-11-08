@@ -34,6 +34,7 @@ import io.brushforge.brushforge.feature.profile.R as ProfileR
 import io.brushforge.brushforge.feature.converter.ConverterScreen
 import io.brushforge.brushforge.feature.mypaints.MyPaintsScreen
 import io.brushforge.brushforge.feature.mypaints.PaintDetailScreen
+import io.brushforge.brushforge.feature.palettes.BrowseRecipesScreen
 import io.brushforge.brushforge.feature.palettes.PalettesScreen
 import io.brushforge.brushforge.feature.palettes.RecipeDetailScreen
 import io.brushforge.brushforge.feature.primed.PrimedScreen
@@ -114,6 +115,19 @@ fun BrushforgeApp(
                 PalettesScreen(
                     onNavigateToDetail = { recipeId ->
                         navController.navigate("palettes/detail/$recipeId")
+                    },
+                    onNavigateToBrowse = {
+                        navController.navigate("palettes/browse")
+                    }
+                )
+            }
+            composable("palettes/browse") {
+                BrowseRecipesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToRecipeDetail = { recipeId ->
+                        navController.navigate("palettes/detail/$recipeId") {
+                            popUpTo("palettes") { inclusive = false }
+                        }
                     }
                 )
             }
