@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,6 +67,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -191,7 +194,8 @@ fun ConverterScreen(
                     onClearAllBrands = viewModel::onClearAllBrands,
                     onRequireSameTypeChanged = viewModel::onRequireSameTypeChanged,
                     onFindMatches = viewModel::onFindMatches,
-                    onFindMixRecipes = viewModel::onFindMixRecipes
+                    onFindMixRecipes = viewModel::onFindMixRecipes,
+                    onSearchColorFilterToggle = viewModel::onSearchColorFilterToggle
                 )
                 ConverterView.Results -> ResultsView(
                     state = state,
@@ -239,16 +243,18 @@ private fun SearchView(
     onClearAllBrands: () -> Unit,
     onRequireSameTypeChanged: (Boolean) -> Unit,
     onFindMatches: () -> Unit,
-    onFindMixRecipes: () -> Unit
+    onFindMixRecipes: () -> Unit,
+    onSearchColorFilterToggle: (io.brushforge.brushforge.domain.util.ColorFamily) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Search Section (no title needed)
-
-        item {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Fixed Search Bar at Top
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             if (state.selectedSourcePaint == null) {
                 OutlinedTextField(
                     value = state.searchQuery,
@@ -305,11 +311,38 @@ private fun SearchView(
                     onClear = onClearSourcePaint
                 )
             }
+
+            // Color filter chips
+            ColorFamilyFilterRow(
+                selectedFamilies = state.searchColorFilter,
+                onColorFamilyToggle = onSearchColorFilterToggle
+            )
         }
+
+        // Scrollable Content Below
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
 
         // Search Results
         if (state.showSearchResults && state.searchResults.isNotEmpty()) {
-            items(state.searchResults) { paint ->
+            // Show subtitle only if no search query (initial state)
+            if (state.searchQuery.isEmpty() && state.selectedSourcePaint == null) {
+                item {
+                    Text(
+                        text = "Tap any paint to find similar alternatives",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            items(
+                items = state.searchResults,
+                key = { it.stableId }
+            ) { paint ->
                 PaintSearchResultItem(
                     paint = paint,
                     onClick = { onSelectSourcePaint(paint) }
@@ -385,7 +418,8 @@ private fun SearchView(
                 }
             }
         }
-    }
+        } // End LazyColumn
+    } // End Column
 }
 
 @Composable
@@ -449,36 +483,44 @@ private fun PaintSearchResultItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Larger, more prominent color swatch
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(Color(paint.hex.toColorInt()))
                     .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outline,
-                        shape = RoundedCornerShape(8.dp)
+                        width = 1.5.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
                     )
             )
-            Column {
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = paint.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${paint.brand} ${paint.line ?: ""}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "${paint.brand}${if (!paint.line.isNullOrBlank()) " • ${paint.line}" else ""}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -2169,4 +2211,81 @@ private fun SearchFilterSheet(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ColorFamilyFilterRow(
+    selectedFamilies: Set<io.brushforge.brushforge.domain.util.ColorFamily>,
+    onColorFamilyToggle: (io.brushforge.brushforge.domain.util.ColorFamily) -> Unit
+) {
+    val availableFamilies = listOf(
+        io.brushforge.brushforge.domain.util.ColorFamily.Red,
+        io.brushforge.brushforge.domain.util.ColorFamily.Orange,
+        io.brushforge.brushforge.domain.util.ColorFamily.Yellow,
+        io.brushforge.brushforge.domain.util.ColorFamily.Green,
+        io.brushforge.brushforge.domain.util.ColorFamily.Blue,
+        io.brushforge.brushforge.domain.util.ColorFamily.Purple,
+        io.brushforge.brushforge.domain.util.ColorFamily.Pink,
+        io.brushforge.brushforge.domain.util.ColorFamily.Brown,
+        io.brushforge.brushforge.domain.util.ColorFamily.Grey,
+        io.brushforge.brushforge.domain.util.ColorFamily.Black,
+        io.brushforge.brushforge.domain.util.ColorFamily.White
+    )
+
+    val haptic = LocalHapticFeedback.current
+
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(availableFamilies) { family ->
+            val selected = selectedFamilies.contains(family)
+            FilterChip(
+                selected = selected,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onColorFamilyToggle(family)
+                },
+                label = { Text(colorFamilyLabel(family), style = MaterialTheme.typography.labelSmall) },
+                leadingIcon = {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(
+                                color = colorFamilyColor(family),
+                                shape = CircleShape
+                            )
+                    )
+                }
+            )
+        }
+    }
+}
+
+private fun colorFamilyLabel(family: io.brushforge.brushforge.domain.util.ColorFamily): String = when (family) {
+    io.brushforge.brushforge.domain.util.ColorFamily.Red -> "Red"
+    io.brushforge.brushforge.domain.util.ColorFamily.Orange -> "Orange"
+    io.brushforge.brushforge.domain.util.ColorFamily.Yellow -> "Yellow"
+    io.brushforge.brushforge.domain.util.ColorFamily.Green -> "Green"
+    io.brushforge.brushforge.domain.util.ColorFamily.Blue -> "Blue"
+    io.brushforge.brushforge.domain.util.ColorFamily.Purple -> "Purple"
+    io.brushforge.brushforge.domain.util.ColorFamily.Pink -> "Pink"
+    io.brushforge.brushforge.domain.util.ColorFamily.Brown -> "Brown"
+    io.brushforge.brushforge.domain.util.ColorFamily.Grey -> "Grey"
+    io.brushforge.brushforge.domain.util.ColorFamily.Black -> "Black"
+    io.brushforge.brushforge.domain.util.ColorFamily.White -> "White"
+}
+
+private fun colorFamilyColor(family: io.brushforge.brushforge.domain.util.ColorFamily): Color = when (family) {
+    io.brushforge.brushforge.domain.util.ColorFamily.Red -> Color(0xFFEF5350)
+    io.brushforge.brushforge.domain.util.ColorFamily.Orange -> Color(0xFFFFA726)
+    io.brushforge.brushforge.domain.util.ColorFamily.Yellow -> Color(0xFFFFEB3B)
+    io.brushforge.brushforge.domain.util.ColorFamily.Green -> Color(0xFF66BB6A)
+    io.brushforge.brushforge.domain.util.ColorFamily.Blue -> Color(0xFF42A5F5)
+    io.brushforge.brushforge.domain.util.ColorFamily.Purple -> Color(0xFFAB47BC)
+    io.brushforge.brushforge.domain.util.ColorFamily.Pink -> Color(0xFFF06292)
+    io.brushforge.brushforge.domain.util.ColorFamily.Brown -> Color(0xFF8D6E63)
+    io.brushforge.brushforge.domain.util.ColorFamily.Grey -> Color(0xFFB0BEC5)
+    io.brushforge.brushforge.domain.util.ColorFamily.Black -> Color(0xFF424242)
+    io.brushforge.brushforge.domain.util.ColorFamily.White -> Color(0xFFFFFFFF)
 }
