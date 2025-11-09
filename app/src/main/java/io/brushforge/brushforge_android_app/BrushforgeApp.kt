@@ -48,10 +48,17 @@ fun BrushforgeApp(
     val destinations = BrushforgeDestination.all
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val bottomBarRoutes = destinations.map { it.route }
-    // Check if current route starts with any bottom bar route (to handle parametrized routes)
+
+    // Define routes where bottom bar should be hidden
+    val hiddenBottomBarRoutes = setOf(
+        "mypaints/detail/{stableId}",
+        "palettes/detail/{recipeId}",
+        "palettes/browse"
+    )
+
+    // Show bottom bar on main tabs, hide on detail screens
     val shouldShowBottomBar = currentDestination?.route?.let { route ->
-        bottomBarRoutes.any { route.startsWith(it) }
+        route !in hiddenBottomBarRoutes
     } ?: false
 
     Scaffold(
@@ -93,6 +100,7 @@ fun BrushforgeApp(
                 MyPaintsScreen(
                     onPaintSelected = { stableId ->
                         val encoded = Uri.encode(stableId)
+                        // Navigate to paint detail (no popUpTo needed here as we're starting from list)
                         navController.navigate("mypaints/detail/$encoded")
                     }
                 )
@@ -105,7 +113,11 @@ fun BrushforgeApp(
                     onNavigateUp = { navController.popBackStack() },
                     onShowPaint = { nextStableId ->
                         val encoded = Uri.encode(nextStableId)
-                        navController.navigate("mypaints/detail/$encoded")
+                        navController.navigate("mypaints/detail/$encoded") {
+                            // Pop all paint details from the stack, keeping only MyPaints list
+                            // This prevents deep navigation stacks when exploring paints
+                            popUpTo("mypaints") { inclusive = false }
+                        }
                     }
                 )
             }
