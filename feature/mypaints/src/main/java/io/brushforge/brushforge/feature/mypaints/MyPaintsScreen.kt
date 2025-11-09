@@ -45,6 +45,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import io.brushforge.brushforge.core.ui.components.ColorFilterChip
+import io.brushforge.brushforge.core.ui.components.RemovableFilterChip
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -468,22 +470,13 @@ private fun ColorFilterRow(
     ) {
         items(availableFamilies) { family ->
             val selected = selectedFamilies.contains(family)
-            FilterChip(
+            ColorFilterChip(
+                label = colorFamilyLabel(family),
+                color = colorFamilyColor(family),
                 selected = selected,
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onColorFamilyToggle(family)
-                },
-                label = { Text(colorFamilyLabel(family), style = MaterialTheme.typography.labelSmall) },
-                leadingIcon = {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(
-                                color = colorFamilyColor(family),
-                                shape = CircleShape
-                            )
-                    )
                 }
             )
         }
@@ -514,23 +507,15 @@ private fun ActiveFilterChips(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             filterState.selectedBrands.sorted().forEach { brand ->
-                FilterChip(
-                    selected = true,
-                    onClick = { onBrandChipClick(brand) },
-                    label = { Text(brand) },
-                    trailingIcon = {
-                        Icon(imageVector = Icons.Outlined.Close, contentDescription = "Remove brand")
-                    }
+                RemovableFilterChip(
+                    label = brand,
+                    onClick = { onBrandChipClick(brand) }
                 )
             }
             filterState.selectedTypes.sortedBy { it.rawValue }.forEach { type ->
-                FilterChip(
-                    selected = true,
-                    onClick = { onTypeChipClick(type) },
-                    label = { Text(type.rawValue) },
-                    trailingIcon = {
-                        Icon(imageVector = Icons.Outlined.Close, contentDescription = "Remove type")
-                    }
+                RemovableFilterChip(
+                    label = type.rawValue,
+                    onClick = { onTypeChipClick(type) }
                 )
             }
         }
