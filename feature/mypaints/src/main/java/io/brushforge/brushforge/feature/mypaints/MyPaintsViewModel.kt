@@ -297,6 +297,10 @@ class MyPaintsViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Paint List Actions - Toggle status, update notes, delete paints
+    // ============================================================================
+
     fun onOwnedToggled(stableId: String, owned: Boolean) {
         // Persist to database first (with limit check)
         viewModelScope.launch {
@@ -421,6 +425,10 @@ class MyPaintsViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Search & Filtering - Query, collection, color/brand/type filters, sort
+    // ============================================================================
+
     fun onSearchQueryChange(value: String) {
         searchQuery.value = value
         // Update state immediately for responsive text input
@@ -439,6 +447,10 @@ class MyPaintsViewModel @Inject constructor(
     fun onClearColorFilters() {
         colorFilters.value = emptySet()
     }
+
+    // ============================================================================
+    // UI Sheet Management - Add menu, filters, paint actions dialog
+    // ============================================================================
 
     fun onAddButtonClicked() {
         val options = _state.value.paintOptions
@@ -537,6 +549,10 @@ class MyPaintsViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Custom Paint Form - Form field updates
+    // ============================================================================
+
     fun onCustomNameChanged(value: String) {
         _state.update { it.copy(customForm = it.customForm.copy(name = value)) }
     }
@@ -614,6 +630,10 @@ class MyPaintsViewModel @Inject constructor(
         _state.update { it.copy(customForm = it.customForm.copy(notes = value)) }
     }
 
+    // ============================================================================
+    // Mix Paint Form - Form field updates & component management
+    // ============================================================================
+
     fun onMixNameChanged(value: String) {
         mutateMixForm { it.copy(name = value) }
     }
@@ -677,6 +697,10 @@ class MyPaintsViewModel @Inject constructor(
             })
         }
     }
+
+    // ============================================================================
+    // Form Submission - Validation and persistence
+    // ============================================================================
 
     fun onSubmitMixPaint() {
         val current = _state.value
@@ -812,6 +836,10 @@ class MyPaintsViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Additional Filter Controls - Brand/Type filters (separate from main search)
+    // ============================================================================
+
     fun onErrorMessageShown() {
         _state.update { it.copy(errorMessage = null) }
     }
@@ -844,6 +872,10 @@ class MyPaintsViewModel @Inject constructor(
     fun onSortOptionSelected(option: PaintSortOption) {
         sortOption.value = option
     }
+
+    // ============================================================================
+    // Helper Functions - Form validation, sorting, merging, normalization
+    // ============================================================================
 
     private fun validateHex(hex: String): String? {
         val regex = Regex("^#[0-9A-Fa-f]{6}$")
