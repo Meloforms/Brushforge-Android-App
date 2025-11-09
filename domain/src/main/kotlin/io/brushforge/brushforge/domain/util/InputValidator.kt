@@ -43,9 +43,9 @@ object InputValidator {
         val sanitized = sanitizeUserInput(name)
 
         return when {
-            sanitized.isBlank() -> ValidationResult.Invalid("Paint name cannot be empty")
+            sanitized.isBlank() -> ValidationResult.Invalid("Paint name cannot be empty. Please enter a name.")
             sanitized.length > MAX_PAINT_NAME_LENGTH ->
-                ValidationResult.Invalid("Paint name must be $MAX_PAINT_NAME_LENGTH characters or less")
+                ValidationResult.Invalid("Paint name is too long (${sanitized.length}/$MAX_PAINT_NAME_LENGTH characters). Please shorten it.")
             else -> ValidationResult.Valid
         }
     }
@@ -80,9 +80,9 @@ object InputValidator {
         val sanitized = sanitizeUserInput(brand)
 
         return when {
-            sanitized.isBlank() -> ValidationResult.Invalid("Brand cannot be empty")
+            sanitized.isBlank() -> ValidationResult.Invalid("Brand cannot be empty. Please enter a brand name.")
             sanitized.length > MAX_PAINT_BRAND_LENGTH ->
-                ValidationResult.Invalid("Brand must be $MAX_PAINT_BRAND_LENGTH characters or less")
+                ValidationResult.Invalid("Brand is too long (${sanitized.length}/$MAX_PAINT_BRAND_LENGTH characters). Please shorten it.")
             else -> ValidationResult.Valid
         }
     }
@@ -113,7 +113,7 @@ object InputValidator {
 
         return when {
             sanitized.length > MAX_NOTES_LENGTH ->
-                ValidationResult.Invalid("Notes must be $MAX_NOTES_LENGTH characters or less")
+                ValidationResult.Invalid("Notes are too long (${sanitized.length}/$MAX_NOTES_LENGTH characters). Please shorten your notes.")
             else -> ValidationResult.Valid
         }
     }
@@ -130,9 +130,9 @@ object InputValidator {
         val sanitized = sanitizeUserInput(name)
 
         return when {
-            sanitized.isBlank() -> ValidationResult.Invalid("Recipe name cannot be empty")
+            sanitized.isBlank() -> ValidationResult.Invalid("Recipe name cannot be empty. Please enter a name for your recipe.")
             sanitized.length > MAX_RECIPE_NAME_LENGTH ->
-                ValidationResult.Invalid("Recipe name must be $MAX_RECIPE_NAME_LENGTH characters or less")
+                ValidationResult.Invalid("Recipe name is too long (${sanitized.length}/$MAX_RECIPE_NAME_LENGTH characters). Please shorten it.")
             else -> ValidationResult.Valid
         }
     }
@@ -252,7 +252,7 @@ object InputValidator {
 
         return when {
             !sanitized.matches(Regex("^#[0-9A-F]{6}$")) ->
-                ValidationResult.Invalid("Color must be in format #RRGGBB")
+                ValidationResult.Invalid("Color must be in format #RRGGBB (e.g., #FF5733). Please check the color code.")
             else -> ValidationResult.Valid
         }
     }
