@@ -72,11 +72,35 @@ class MyPaintsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            when (seedCatalogIfNeededUseCase()) {
-                is SeedCatalogIfNeededUseCase.Result.Seeded -> Unit
-                is SeedCatalogIfNeededUseCase.Result.AlreadySeeded -> Unit
+            when (val result = seedCatalogIfNeededUseCase()) {
+                is SeedCatalogIfNeededUseCase.Result.Seeded -> {
+                    android.util.Log.i("MyPaintsViewModel", "Successfully loaded ${result.inserted} catalog paints")
+                }
+                is SeedCatalogIfNeededUseCase.Result.AlreadySeeded -> {
+                    android.util.Log.d("MyPaintsViewModel", "Catalog already seeded with ${result.count} paints")
+                }
+                is SeedCatalogIfNeededUseCase.Result.PartiallySeeded -> {
+                    android.util.Log.w(
+                        "MyPaintsViewModel",
+                        "Loaded ${result.inserted} paints with ${result.errors.size} errors"
+                    )
+                    _events.emit(
+                        MyPaintsEvent.ShowMessage(
+                            "Loaded ${result.inserted} paints. Some catalog files failed to load."
+                        )
+                    )
+                }
+                is SeedCatalogIfNeededUseCase.Result.LoadFailed -> {
+                    android.util.Log.e("MyPaintsViewModel", "Failed to load catalog: ${result.errors}")
+                    _events.emit(
+                        MyPaintsEvent.ShowMessage(
+                            "Unable to load paint catalog. Please reinstall the app."
+                        )
+                    )
+                }
                 SeedCatalogIfNeededUseCase.Result.NoCatalogData -> {
-                    _events.emit(MyPaintsEvent.ShowMessage("Unable to load paint catalog."))
+                    android.util.Log.w("MyPaintsViewModel", "No catalog data available")
+                    _events.emit(MyPaintsEvent.ShowMessage("No paint catalog available. Please reinstall the app."))
                 }
             }
         }
