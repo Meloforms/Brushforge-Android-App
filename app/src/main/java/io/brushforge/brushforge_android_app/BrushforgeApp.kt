@@ -105,9 +105,7 @@ fun BrushforgeApp(
                     onNavigateUp = { navController.popBackStack() },
                     onShowPaint = { nextStableId ->
                         val encoded = Uri.encode(nextStableId)
-                        navController.navigate("mypaints/detail/$encoded") {
-                            launchSingleTop = true
-                        }
+                        navController.navigate("mypaints/detail/$encoded")
                     }
                 )
             }
