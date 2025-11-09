@@ -38,6 +38,11 @@ dependencies {
     implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
 
+    // Database encryption
+    implementation(libs.sqlcipher.android)
+    implementation(libs.androidx.sqlite)
+    implementation(libs.androidx.security.crypto)
+
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.work.ktx)
 
