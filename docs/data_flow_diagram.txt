@@ -1,0 +1,240 @@
+================================================================================
+PAINT CONVERTER - DATA FLOW AND FILTERING PIPELINE
+================================================================================
+
+USER FLOW:
+==========
+
+1. SEARCH & SELECT SOURCE PAINT
+   │
+   ├─ User types in search field
+   │  └─ onSearchQueryChanged() → filterSearchResults()
+   │     └─ Filters allPaints by: text, brand, type
+   │     └─ Results shown in searchResults
+   │
+   └─ User selects paint from search results
+      └─ onSelectSourcePaint(paint)
+         └─ Updates selectedSourcePaint
+
+
+2. CONFIGURE TARGET BRANDS (optional)
+   │
+   └─ User toggles brands
+      └─ onToggleBrandFilter(brand)
+         └─ Updates selectedTargetBrands
+
+
+3. FIND MATCHES BUTTON
+   │
+   └─ onFindMatches()
+      │
+      ├─ Get selectedSourcePaint
+      ├─ Get selectedTargetBrands
+      │
+      └─ Call FindSimilarPaintsUseCase
+         │
+         ├─ Filter candidates by brand (if specified)
+         ├─ Filter by type compatibility
+         ├─ Filter by finish compatibility
+         │
+         └─ For each candidate:
+            ├─ Calculate colorDistance() 
+            │  └─ Uses DELTA_E_2000 algorithm
+            │
+            ├─ calculateConfidence(distance)
+            │  └─ confidence = 1.0 - (distance / 50.0)
+            │  └─ THIS IS THE PROBLEM: confidence only depends on distance!
+            │
+            └─ Create PaintMatch object
+               ├─ distance
+               ├─ confidence 
+               ├─ isExcellentMatch (confidence >= 0.9 && distance <= 5.0)
+               └─ isGoodMatch (confidence >= 0.7 && distance <= 15.0)
+         │
+         └─ Sort by distance (ascending)
+         └─ Return top 50 matches
+         │
+         └─ Update state:
+            ├─ matches = [sorted list]
+            ├─ currentView = Results
+            └─ isLoading = false
+
+
+4. SORT & FILTER RESULTS
+   │
+   ├─ SORTING (onSortOptionChanged)
+   │  │
+   │  ├─ ByDistance: sortedBy { it.distance } ←→ ASCENDING
+   │  │  └─ Shows lowest distances first (BEST MATCHES)
+   │  │
+   │  ├─ ByConfidence: sortedByDescending { it.confidence } ←→ DESCENDING
+   │  │  └─ Shows highest confidence first
+   │  │  └─ BUT: confidence ∝ -distance, so IDENTICAL ORDER!
+   │  │
+   │  └─ ByBrand: sortedBy { it.paint.brand }
+   │     └─ Alphabetical by brand name
+   │
+   │
+   └─ QUALITY FILTERING (filteredMatches computed property)
+      │
+      └─ Filter matches based on:
+         │
+         ├─ showExcellentOnly == true
+         │  └─ Keep only: isExcellentMatch == true
+         │             (confidence >= 0.9 && distance <= 5.0)
+         │
+         ├─ showGoodOnly == true
+         │  └─ Keep only: isGoodMatch == true
+         │             (confidence >= 0.7 && distance <= 15.0)
+         │
+         └─ else (showExcellentOnly == false && showGoodOnly == false)
+            └─ Keep all matches
+
+
+5. DISPLAY RESULTS
+   │
+   └─ ResultsView uses:
+      ├─ state.filteredMatches (quality filtered)
+      ├─ state.sortOption (current sort setting)
+      ├─ Sort chips showing current selection
+      │
+      └─ For each match in filteredMatches:
+         ├─ Paint name & brand
+         ├─ Color swatch
+         ├─ Confidence: "%.0f%%".format(match.confidence * 100)
+         ├─ Delta E: "ΔE %.2f".format(match.distance)
+         └─ Quality badge (Excellent/Good/Fair/Poor)
+
+
+================================================================================
+CURRENT STATE STRUCTURE
+================================================================================
+
+ConverterUiState
+├─ Search Phase:
+│  ├─ searchQuery: String
+│  ├─ allPaints: List<CatalogPaint>
+│  ├─ searchResults: List<CatalogPaint>
+│  ├─ showSearchResults: Boolean
+│  ├─ selectedSourcePaint: CatalogPaint?
+│  ├─ searchBrandFilter: String? (source paint search)
+│  ├─ searchTypeFilter: PaintType? (source paint search)
+│  ├─ availableBrands: List<String>
+│  ├─ selectedTargetBrands: Set<String>
+│  └─ requireSameType: Boolean
+│
+├─ Results Phase:
+│  ├─ isLoading: Boolean
+│  ├─ matches: List<PaintMatch> ← RAW, unsorted
+│  ├─ sortOption: MatchSortOption (controls display order)
+│  ├─ showExcellentOnly: Boolean ← QUALITY FILTER 1
+│  ├─ showGoodOnly: Boolean ← QUALITY FILTER 2
+│  │
+│  └─ filteredMatches: List<PaintMatch> ← COMPUTED PROPERTY
+│     └─ Filters matches by quality, returns in current sort order
+│
+├─ Detail Phase:
+│  ├─ selectedMatch: PaintMatch?
+│  ├─ mixRecipes: List<PaintMixRecipe>
+│  └─ selectedRecipe: PaintMixRecipe?
+│
+└─ UI State:
+   ├─ currentView: ConverterView
+   ├─ showFilterSheet: Boolean
+   └─ showInfoDialog: Boolean
+
+
+================================================================================
+WHY "BEST MATCH" == "CONFIDENCE" (THE BUG)
+================================================================================
+
+Mathematical proof:
+
+1. Confidence calculation (FindSimilarPaintsUseCase.kt):
+   confidence = (1.0 - (distance / 50.0)).coerceIn(0.0, 1.0)
+
+2. This creates an INVERSE relationship:
+   - distance = 0  →  confidence = 1.0 (perfect match)
+   - distance = 5  →  confidence = 0.9 (excellent)
+   - distance = 10 →  confidence = 0.8 (very good)
+   - distance = 50 →  confidence = 0.0 (no match)
+
+3. Sorting logic:
+   - ByDistance: sortedBy { distance }
+     Order: [0, 5, 10, 15, ...]  (ascending)
+   
+   - ByConfidence: sortedByDescending { confidence }
+     Order: [1.0, 0.9, 0.8, 0.7, ...]  (descending)
+     Which maps to distances: [0, 5, 10, 15, ...]
+
+4. Result: IDENTICAL SORT ORDER!
+
+FIX: Make confidence calculation multi-factorial:
+-----
+confidence = 
+    (distanceScore * 0.40) +
+    (typeMatchScore * 0.25) +
+    (finishMatchScore * 0.15) +
+    (availabilityScore * 0.15) +
+    (brandFamiliarityScore * 0.05)
+
+Where each score is 0.0-1.0
+
+
+================================================================================
+ADDING "OWNED ONLY" FILTER
+================================================================================
+
+Required changes:
+
+1. ConverterViewModel.kt
+   ├─ Inject UserPaintRepository
+   ├─ Add to ConverterUiState:
+   │  ├─ userOwnedPaintIds: Set<String> = emptySet()
+   │  └─ showOwnedOnly: Boolean = false
+   ├─ Add function: onFilterOwnedOnlyChanged(Boolean)
+   └─ Load user paints in init or lazy load
+
+2. Update filteredMatches computed property:
+   │
+   └─ Add filter:
+      if (showOwnedOnly) {
+          keep only matches where match.paint.stableId in userOwnedPaintIds
+      }
+
+3. ConverterScreen.kt
+   ├─ Add Switch/FilterChip for "Owned Only"
+   ├─ Location options:
+   │  ├─ In SearchView (before Find button) - filter BEFORE search
+   │  └─ In ResultsView (with sort chips) - filter AFTER search results
+   │
+   └─ Call: onFilterOwnedOnlyChanged(newValue)
+
+
+================================================================================
+KEY INSIGHT: DIFFERENCE BETWEEN TWO FILTER LEVELS
+================================================================================
+
+Search Filters (before finding matches):
+├─ Where: SearchView, search input
+├─ What: Filter the SOURCE paint options
+├─ State:
+│  ├─ searchBrandFilter: String? (limit search by brand)
+│  └─ searchTypeFilter: PaintType? (limit search by type)
+└─ Result: Reduces searchResults shown as user types
+
+Target Filters (when finding matches):
+├─ Where: SearchView, after source paint selected
+├─ What: Filter the TARGET brands to search
+├─ State: selectedTargetBrands: Set<String>
+└─ Result: Only finds matches in selected brands
+
+Results Filters (after finding matches):
+├─ Where: ResultsView
+├─ What: Filter the already-found matches
+├─ State:
+│  ├─ showExcellentOnly: Boolean
+│  ├─ showGoodOnly: Boolean
+│  └─ [NEW] showOwnedOnly: Boolean
+└─ Result: Filters matches by quality / ownership
+
