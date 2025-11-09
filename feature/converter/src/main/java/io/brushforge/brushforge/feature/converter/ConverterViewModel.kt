@@ -83,6 +83,10 @@ class ConverterViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Paint Search - Query and filters for finding paints
+    // ============================================================================
+
     fun onSearchQueryChanged(query: String) {
         // Validate and sanitize search query
         val validation = InputValidator.validateSearchQuery(query)
@@ -197,6 +201,10 @@ class ConverterViewModel @Inject constructor(
         _state.update { it.copy(showSearchResults = true) }
     }
 
+    // ============================================================================
+    // Source Paint Selection - Select/clear the paint to convert from
+    // ============================================================================
+
     fun onSelectSourcePaint(paint: CatalogPaint) {
         _state.update {
             it.copy(
@@ -217,6 +225,10 @@ class ConverterViewModel @Inject constructor(
             )
         }
     }
+
+    // ============================================================================
+    // Brand Filters - Toggle target brand filters for matching
+    // ============================================================================
 
     fun onToggleBrandFilter(brand: String) {
         _state.update { state ->
@@ -240,6 +252,10 @@ class ConverterViewModel @Inject constructor(
     fun onRequireSameTypeChanged(require: Boolean) {
         _state.update { it.copy(requireSameType = require) }
     }
+
+    // ============================================================================
+    // Matching & Recipe Finding - Find similar paints and mix recipes
+    // ============================================================================
 
     fun onFindMatches() {
         val sourcePaint = _state.value.selectedSourcePaint
@@ -331,6 +347,10 @@ class ConverterViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Navigation & Selection - Match/recipe selection and screen navigation
+    // ============================================================================
+
     fun onMatchSelected(match: PaintMatch) {
         _state.update {
             it.copy(
@@ -370,6 +390,10 @@ class ConverterViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Result Filtering & Sorting - Sort options and quality filters
+    // ============================================================================
+
     fun onSortOptionChanged(option: MatchSortOption) {
         _state.update { state ->
             val sortedMatches = when (option) {
@@ -396,6 +420,10 @@ class ConverterViewModel @Inject constructor(
     fun onToggleOwnedOnly() {
         _state.update { it.copy(showOwnedOnly = !it.showOwnedOnly) }
     }
+
+    // ============================================================================
+    // UI Dialog Management - Filter sheet and info dialog
+    // ============================================================================
 
     fun onOpenFilterSheet() {
         _state.update { it.copy(showFilterSheet = true) }

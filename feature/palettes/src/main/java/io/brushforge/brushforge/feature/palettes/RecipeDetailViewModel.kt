@@ -76,6 +76,10 @@ class RecipeDetailViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Basic Recipe Editing - Name, favorite, notes, tags
+    // ============================================================================
+
     fun onNameChanged(name: String) {
         // Sanitize input as user types, but allow empty during editing
         val sanitized = InputValidator.sanitizeUserInput(name)
@@ -118,6 +122,10 @@ class RecipeDetailViewModel @Inject constructor(
         }
     }
 
+    // ============================================================================
+    // Recipe Persistence - Save & Delete operations
+    // ============================================================================
+
     fun onSaveRecipe() {
         val recipe = _state.value.recipe ?: return
 
@@ -156,6 +164,10 @@ class RecipeDetailViewModel @Inject constructor(
     fun onDismissDeleteDialog() {
         _state.update { it.copy(showDeleteDialog = false) }
     }
+
+    // ============================================================================
+    // Edit Dialogs - Name, Tags, Notes dialog management
+    // ============================================================================
 
     fun onShowEditNameDialog() {
         _state.update { it.copy(showEditNameDialog = true, editNameText = it.recipe?.name ?: "") }
@@ -224,6 +236,10 @@ class RecipeDetailViewModel @Inject constructor(
         onNotesChanged(_state.value.editNotesText)
         onDismissEditNotesDialog()
     }
+
+    // ============================================================================
+    // Recipe Step Management - Delete, move, edit step notes
+    // ============================================================================
 
     fun onDeleteStep(stepId: String) {
         val recipe = _state.value.recipe ?: return
@@ -320,6 +336,10 @@ class RecipeDetailViewModel @Inject constructor(
             )
         }
     }
+
+    // ============================================================================
+    // Paint Management - Paint picker, paint replacement, substitutes
+    // ============================================================================
 
     fun onShowPaintPicker() {
         _state.update { it.copy(showPaintPicker = true) }
